@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { supabase } from './lib/supabase';
-import { CITIES, CATEGORIES } from './constants';
-import type { Guide, Thread, ContributionForm, ThreadForm, City, Category, Post } from './types';
+import { CITIES, CATEGORIES, THREAD_CATEGORIES } from './constants';
+import type { Guide, Thread, ContributionForm, ThreadForm, City, Category, Post, ThreadCategory } from './types';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ExplorerTab from './components/ExplorerTab';
@@ -26,12 +26,13 @@ export default function App() {
   const [cityFilter, setCityFilter] = useState<City | 'All'>("All");
   const [categoryFilter, setCategoryFilter] = useState<Category | 'All'>("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const [threadCategoryFilter, setThreadCategoryFilter] = useState<ThreadCategory | 'All'>("All");
   const [selectedGuide, setSelectedGuide] = useState<Guide | null>(null);
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
 
   const [contribution, setContribution] = useState<ContributionForm>({ title: "", author: "", city: "Jakarta", category: "Transport", stepsText: "", tipsText: "", cost: "" });
   const [editingGuide, setEditingGuide] = useState<Guide | null>(null);
-  const [threadForm, setThreadForm] = useState<ThreadForm>({ title: "", text: ""});
+  const [threadForm, setThreadForm] = useState<ThreadForm>({ title: "", text: "", category: "Umum" });
 
   const [isContributionModalOpen, setIsContributionModalOpen] = useState(false);
   const [isThreadModalOpen, setIsThreadModalOpen] = useState(false);
@@ -55,11 +56,12 @@ export default function App() {
         
         setThreads(threadsData.map((t: any) => ({
             ...t,
+            category: t.category || 'Umum',
             greenVotes: t.green_votes || [],
             yellowVotes: t.yellow_votes || [],
             redVotes: t.red_votes || [],
             reports: t.reports || [],
-            posts: t.posts.map((p: any) => ({...p, text: p.content})).sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+            posts: t.posts.map((p: any) => ({...p, text: p.content, reports: p.reports || []})).sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
         })));
         
       } catch (error) {
@@ -82,6 +84,10 @@ export default function App() {
         g.steps.join(" ").toLowerCase().includes(searchQuery.toLowerCase())
       );
   }, [guides, cityFilter, categoryFilter, searchQuery]);
+
+  const filteredThreads = useMemo(() => {
+      return threads.filter(t => (threadCategoryFilter === "All" ? true : t.category === threadCategoryFilter));
+  }, [threads, threadCategoryFilter]);
 
   useEffect(() => {
     setVisibleGuidesCount(GUIDES_PER_PAGE);
@@ -155,6 +161,19 @@ export default function App() {
       setEditingGuide(null);
       setContribution({ title: "", author: "", city: "Jakarta", category: "Transport", stepsText: "", tipsText: "", cost: "" });
   };
+  
+  const handleResetContributionForm = () => {
+    const defaultAuthor = editingGuide ? contribution.author : currentUser;
+    setContribution({
+      title: "",
+      author: defaultAuthor,
+      city: "Jakarta",
+      category: "Transport",
+      stepsText: "",
+      tipsText: "",
+      cost: "",
+    });
+  };
 
   const handleSubmitContribution = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -185,7 +204,7 @@ export default function App() {
             difficulty: "Pemula",
             duration: "—",
             map_url: "https://www.google.com/maps",
-            is_user_contribution: true,
+            is_user_contribution: !isAdmin,
             views: 0,
             status: isAdmin ? 'approved' : 'pending',
         };
@@ -198,7 +217,7 @@ export default function App() {
                 setActiveTab("Explorer");
                 alert("Panduan berhasil dibuat dan langsung dipublikasikan.");
             } else {
-                setActiveTab("Dari Netizen");
+                setActiveTab("Panduan Netizen");
                 alert("Kontribusi berhasil dikirim dan sedang menunggu tinjauan admin.");
             }
         }
@@ -233,20 +252,38 @@ export default function App() {
 
     const threadId = `th-${Date.now()}`;
     const { data: threadData, error: threadError } = await supabase.from('threads').insert({
-        id: threadId, title: threadForm.title, green_votes: [], yellow_votes: [], red_votes: [], reports: []
+        id: threadId, 
+        title: threadForm.title, 
+        category: threadForm.category,
+        green_votes: [], 
+        yellow_votes: [], 
+        red_votes: [], 
+        reports: []
     }).select().single();
 
     if (threadError) { alert(`Error: ${threadError.message}`); return; }
 
     const { data: postData, error: postError } = await supabase.from('posts').insert({
-        id: `p-${Date.now()}`, thread_id: threadId, author: currentUser, content: threadForm.text
+        id: `p-${Date.now()}`, 
+        thread_id: threadId, 
+        author: currentUser, 
+        content: threadForm.text, 
+        reports: []
     }).select().single();
 
     if (postError) { alert(`Error: ${postError.message}`); return; }
 
-    const newThread = { ...threadData, greenVotes: [], yellowVotes: [], redVotes: [], reports: [], posts: [{...postData, text: postData.content}] };
+    const newThread = { 
+        ...threadData, 
+        category: threadData.category,
+        greenVotes: [], 
+        yellowVotes: [], 
+        redVotes: [], 
+        reports: [], 
+        posts: [{...postData, text: postData.content, reports: []}] 
+    };
     setThreads([newThread, ...threads]);
-    setThreadForm({ title: "", text: "" });
+    setThreadForm({ title: "", text: "", category: "Umum" });
     setIsThreadModalOpen(false);
     alert("Thread baru berhasil dibuat!");
   };
@@ -278,12 +315,12 @@ export default function App() {
   const handleAddPost = async (threadId: string, text: string) => {
     if (!text.trim()) return;
     const { data, error } = await supabase.from('posts').insert({
-        id: `p-${Date.now()}`, thread_id: threadId, author: currentUser, content: text
+        id: `p-${Date.now()}`, thread_id: threadId, author: currentUser, content: text, reports: []
     }).select().single();
 
     if(error) { alert(`Error: ${error.message}`); return; }
     
-    const newPost: Post = { ...data, text: data.content };
+    const newPost: Post = { ...data, text: data.content, reports: data.reports || [] };
     setThreads(threads.map(t => t.id === threadId ? { ...t, posts: [...t.posts, newPost] } : t));
     if(selectedThread?.id === threadId) setSelectedThread(t => t ? ({...t, posts: [...t.posts, newPost]}): null);
   };
@@ -297,16 +334,17 @@ export default function App() {
     if(selectedThread?.id === threadId) setSelectedThread(t => t ? ({...t, posts: t.posts.map(p => p.id === postId ? { ...p, text: newText } : p) }) : null);
   };
 
-  const handleDeletePost = async (threadId: string, postId: string) => {
+  const handleDeletePost = async (threadId: string, postId: string, skipConfirm = false) => {
     const thread = threads.find(t => t.id === threadId);
     if(thread && thread.posts.length <= 1) { alert("Tidak bisa menghapus satu-satunya post."); return; }
-    if (!window.confirm('Anda yakin ingin menghapus post ini?')) return;
+    if (!skipConfirm && !window.confirm('Anda yakin ingin menghapus post ini?')) return;
      
     const { error } = await supabase.from('posts').delete().eq('id', postId);
     if(error) { alert(`Error: ${error.message}`); return; }
 
     setThreads(threads.map(t => t.id === threadId ? { ...t, posts: t.posts.filter(p => p.id !== postId) } : t));
     if(selectedThread?.id === threadId) setSelectedThread(t => t ? ({...t, posts: t.posts.filter(p => p.id !== postId) }) : null);
+    if(skipConfirm) alert('Komentar telah dihapus secara otomatis karena melebihi batas laporan.');
   };
 
   const handleVote = async (threadId: string, voteType: 'green' | 'yellow' | 'red') => {
@@ -326,6 +364,7 @@ export default function App() {
 
     const currentVoteArray = voteArrays[voteType];
     const userIndex = currentVoteArray.indexOf(currentUser);
+    // FIX: The variable `index` was out of scope. Replaced with `userIndex`.
     if (userIndex > -1) currentVoteArray.splice(userIndex, 1);
     else currentVoteArray.push(currentUser);
 
@@ -335,7 +374,7 @@ export default function App() {
 
     if(error) { alert(`Error: ${error.message}`); return; }
 
-    const updatedThread = { ...data, greenVotes: data.green_votes, yellowVotes: data.yellow_votes, redVotes: data.red_votes, posts: thread.posts, reports: thread.reports };
+    const updatedThread = { ...data, category: thread.category, greenVotes: data.green_votes, yellowVotes: data.yellow_votes, redVotes: data.red_votes, posts: thread.posts, reports: thread.reports };
     const updatedThreads = threads.map(t => t.id === threadId ? updatedThread : t);
     setThreads(updatedThreads);
     if (selectedThread?.id === threadId) setSelectedThread(updatedThread);
@@ -353,8 +392,31 @@ export default function App() {
     alert('Terima kasih atas laporan Anda. Admin akan meninjaunya.');
   };
 
+  const handleReportPost = async (threadId: string, postId: string) => {
+    const thread = threads.find(t => t.id === threadId);
+    const post = thread?.posts.find(p => p.id === postId);
+    if (!thread || !post || post.reports.includes(currentUser)) return;
+
+    const newReports = [...post.reports, currentUser];
+    
+    if (newReports.length >= 10) {
+        await handleDeletePost(threadId, postId, true); // skip confirmation
+    } else {
+        const { error } = await supabase.from('posts').update({ reports: newReports }).eq('id', postId);
+        if (error) { alert(`Error: ${error.message}`); return; }
+
+        const updatedPosts = thread.posts.map(p => p.id === postId ? { ...p, reports: newReports } : p);
+        const updatedThreads = threads.map(t => t.id === threadId ? { ...t, posts: updatedPosts } : t);
+        setThreads(updatedThreads);
+        if (selectedThread?.id === threadId) {
+            setSelectedThread(st => st ? { ...st, posts: updatedPosts } : null);
+        }
+        alert('Terima kasih atas laporan Anda.');
+    }
+  };
+
   const TABS = useMemo(() => {
-    const baseTabs = ['Explorer', 'Dari Netizen', 'Forum', 'About'];
+    const baseTabs = ['Explorer', 'Panduan Netizen', 'Forum', 'About'];
     if (isAdminMode) return [...baseTabs, 'Admin'];
     return baseTabs;
   }, [isAdminMode]);
@@ -381,37 +443,64 @@ export default function App() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex-grow pt-24 pb-20 md:py-8">
         {/* Render tab content based on activeTab */}
         {activeTab === 'Explorer' && <ExplorerTab guides={guidesToShow} totalGuidesCount={filteredGuides.length} onLoadMore={handleLoadMoreGuides} onOpenDetail={handleOpenDetail} cityFilter={cityFilter} setCityFilter={setCityFilter} categoryFilter={categoryFilter} setCategoryFilter={setCategoryFilter} searchQuery={searchQuery} setSearchQuery={setSearchQuery}/>}
-        {activeTab === 'Dari Netizen' && <ContributionTab guides={guides} currentUser={currentUser} adminUser={ADMIN_USER} onOpenContributionModal={() => handleOpenContributionModal()} onOpenDetail={handleOpenDetail} onEdit={handleOpenContributionModal} onDelete={handleDeleteGuide} />}
-        {activeTab === 'Forum' && <ForumTab threads={threads} currentUser={currentUser} isAdminMode={isAdminMode} onOpenThreadModal={() => setIsThreadModalOpen(true)} onOpenThreadDetail={handleOpenThreadDetail} onVote={handleVote} onReport={handleReportThread}/>}
+        {activeTab === 'Panduan Netizen' && <ContributionTab guides={guides} currentUser={currentUser} adminUser={ADMIN_USER} onOpenContributionModal={() => handleOpenContributionModal()} onOpenDetail={handleOpenDetail} onEdit={handleOpenContributionModal} onDelete={handleDeleteGuide} />}
+        {activeTab === 'Forum' && <ForumTab threads={filteredThreads} currentUser={currentUser} isAdminMode={isAdminMode} onOpenThreadModal={() => setIsThreadModalOpen(true)} onOpenThreadDetail={handleOpenThreadDetail} onVote={handleVote} onReport={handleReportThread} threadCategoryFilter={threadCategoryFilter} setThreadCategoryFilter={setThreadCategoryFilter} />}
         {activeTab === 'About' && <AboutTab />}
-        {activeTab === 'Admin' && isAdminMode && <AdminTab guides={guides.filter(g => g.user)} threads={threads} onApproveGuide={handleApproveGuide} onDeleteGuide={handleDeleteGuide} onDeleteThread={handleDeleteThread} onAdminLogout={handleAdminLogout}/>}
+        {activeTab === 'Admin' && isAdminMode && <AdminTab guides={guides} threads={threads} onApproveGuide={handleApproveGuide} onDeleteGuide={handleDeleteGuide} onDeleteThread={handleDeleteThread} onAdminLogout={handleAdminLogout}/>}
       </main>
       <Footer />
       {selectedGuide && <GuideDetailModal guide={selectedGuide} onClose={handleCloseDetail} currentUser={currentUser} adminUser={ADMIN_USER} onEdit={handleOpenContributionModal} onDelete={handleDeleteGuide}/>}
-      {selectedThread && <ForumThreadModal thread={selectedThread} onClose={handleCloseThreadDetail} onAddPost={handleAddPost} onEditPost={handleEditPost} onDeletePost={handleDeletePost} onVote={handleVote} onReport={handleReportThread} currentUser={currentUser} adminUser={ADMIN_USER}/>}
+      {selectedThread && <ForumThreadModal thread={selectedThread} onClose={handleCloseThreadDetail} onAddPost={handleAddPost} onEditPost={handleEditPost} onDeletePost={handleDeletePost} onVote={handleVote} onReport={handleReportThread} onReportPost={handleReportPost} currentUser={currentUser} adminUser={ADMIN_USER}/>}
       {isContributionModalOpen && (
          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={handleCloseContributionModal}>
-            <div className="bg-gray-800 w-full max-w-2xl rounded-xl shadow-2xl border border-gray-700" onClick={(e) => e.stopPropagation()}>
-                <form onSubmit={handleSubmitContribution} className="overflow-hidden rounded-xl">
-                    <div className="p-6">
+            <div className="bg-gray-800 text-gray-200 w-full max-w-2xl rounded-lg shadow-2xl border border-gray-700" onClick={(e) => e.stopPropagation()}>
+                <form onSubmit={handleSubmitContribution} className="overflow-hidden rounded-lg">
+                    <div className="p-6 border-b border-gray-700">
                         <h3 className="text-xl font-bold text-gray-100">{editingGuide ? "Edit Panduan Anda" : "Formulir Kontribusi Panduan"}</h3>
                     </div>
-                    <div className="px-6 pb-6 space-y-4 max-h-[70vh] overflow-y-auto">
-                        <input required value={contribution.title} onChange={(e) => setContribution({...contribution, title: e.target.value})} placeholder="Judul Panduan" className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md" />
-                        <input required value={contribution.author} onChange={(e) => setContribution({...contribution, author: e.target.value})} placeholder="Nama Anda" className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md" />
-                        <select value={contribution.city} onChange={(e) => setContribution({...contribution, city: e.target.value as ContributionForm['city']})} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md">
-                            {CITIES.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                        <select value={contribution.category} onChange={(e) => setContribution({...contribution, category: e.target.value as ContributionForm['category']})} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md">
-                            {CATEGORIES.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                        <input value={contribution.cost} onChange={(e) => setContribution({...contribution, cost: e.target.value})} placeholder="Estimasi Biaya" className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md" />
-                        <textarea required value={contribution.stepsText} onChange={(e) => setContribution({...contribution, stepsText: e.target.value})} placeholder="Langkah-langkah (satu per baris)" className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md h-32" />
-                        <textarea value={contribution.tipsText} onChange={(e) => setContribution({...contribution, tipsText: e.target.value})} placeholder="Tips (opsional, satu per baris)" className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md h-24" />
+                    <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                         <input 
+                            required 
+                            value={contribution.author} 
+                            onChange={(e) => setContribution({...contribution, author: e.target.value})} 
+                            placeholder="Nama Kontributor" 
+                            disabled={currentUser === ADMIN_USER}
+                            className="w-full px-3 py-2 text-gray-100 bg-gray-700 border border-gray-600 rounded-md disabled:opacity-70 disabled:cursor-not-allowed placeholder:text-gray-400" 
+                        />
+                        <input 
+                            required 
+                            value={contribution.title} 
+                            onChange={(e) => setContribution({...contribution, title: e.target.value})} 
+                            placeholder="Judul panduan" 
+                            className="w-full px-3 py-2 text-gray-100 bg-gray-700 border border-gray-600 rounded-md placeholder:text-gray-400" 
+                        />
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <select value={contribution.city} onChange={(e) => setContribution({...contribution, city: e.target.value as ContributionForm['city']})} className="w-full px-3 py-2 text-gray-100 bg-gray-700 border border-gray-600 rounded-md">
+                                {CITIES.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                            <select value={contribution.category} onChange={(e) => setContribution({...contribution, category: e.target.value as ContributionForm['category']})} className="w-full px-3 py-2 text-gray-100 bg-gray-700 border border-gray-600 rounded-md">
+                                {CATEGORIES.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                            <input value={contribution.cost} onChange={(e) => setContribution({...contribution, cost: e.target.value})} placeholder="Estimasi biaya" className="w-full px-3 py-2 text-gray-100 bg-gray-700 border border-gray-600 rounded-md placeholder:text-gray-400" />
+                        </div>
+                        <textarea 
+                            required 
+                            value={contribution.stepsText} 
+                            onChange={(e) => setContribution({...contribution, stepsText: e.target.value})} 
+                            placeholder="Langkah per baris (pisah enter)" 
+                            className="w-full px-3 py-2 text-gray-100 bg-gray-700 border border-gray-600 rounded-md h-28 placeholder:text-gray-400" 
+                        />
+                        <textarea 
+                            value={contribution.tipsText} 
+                            onChange={(e) => setContribution({...contribution, tipsText: e.target.value})} 
+                            placeholder="Tips (opsional, per baris)" 
+                            className="w-full px-3 py-2 text-gray-100 bg-gray-700 border border-gray-600 rounded-md h-20 placeholder:text-gray-400" 
+                        />
                     </div>
-                     <div className="px-6 py-4 bg-gray-900/50 border-t border-gray-700 flex gap-4">
-                        <button type="submit" className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700">{editingGuide ? 'Simpan' : 'Kirim'}</button>
-                        <button type="button" onClick={handleCloseContributionModal} className="px-4 py-2 border border-gray-600 text-gray-300 rounded-md hover:bg-gray-700">Batal</button>
+                     <div className="px-6 py-4 bg-gray-900/50 border-t border-gray-700 flex gap-3">
+                        <button type="submit" className="px-6 py-2 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition">{editingGuide ? 'Simpan Perubahan' : 'Kirim'}</button>
+                        <button type="button" onClick={handleResetContributionForm} className="px-4 py-2 border border-gray-600 text-gray-300 font-semibold rounded-md hover:bg-gray-700 transition">Reset</button>
+                        <button type="button" onClick={handleCloseContributionModal} className="ml-auto px-4 py-2 text-gray-400 hover:text-white rounded-md">Batal</button>
                     </div>
                 </form>
             </div>
@@ -426,6 +515,9 @@ export default function App() {
                     </div>
                     <div className="px-6 pb-6 space-y-4">
                          <input required value={threadForm.title} onChange={(e) => setThreadForm({...threadForm, title: e.target.value})} placeholder="Judul Diskusi" className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md" />
+                         <select value={threadForm.category} onChange={(e) => setThreadForm({...threadForm, category: e.target.value as ThreadForm['category']})} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md">
+                            {THREAD_CATEGORIES.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
                          <textarea required value={threadForm.text} onChange={(e) => setThreadForm({...threadForm, text: e.target.value})} placeholder="Pesan Pertama" className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md h-28" />
                     </div>
                     <div className="px-6 py-4 bg-gray-900/50 border-t border-gray-700 flex gap-4">

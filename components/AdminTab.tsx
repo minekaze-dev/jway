@@ -13,11 +13,19 @@ interface AdminTabProps {
 
 const AdminTab: React.FC<AdminTabProps> = ({ guides, threads, onApproveGuide, onDeleteGuide, onDeleteThread, onAdminLogout }) => {
     const [activeSubTab, setActiveSubTab] = useState('review');
+    
+    const ADMIN_USER = 'Admin';
 
     const pendingGuides = guides.filter(g => g.status === 'pending');
-    const approvedGuides = guides.filter(g => g.status === 'approved');
     const reportedThreads = threads.filter(t => t.reports && t.reports.length >= 10);
-    const regularThreads = threads.filter(t => !t.reports || t.reports.length < 10);
+    
+    const approvedGuides = guides.filter(g => g.status === 'approved');
+    const adminGuides = approvedGuides.filter(g => g.author === ADMIN_USER);
+    const userGuides = approvedGuides.filter(g => g.author !== ADMIN_USER);
+
+    const allThreads = threads;
+    const adminThreads = allThreads.filter(t => t.posts[0]?.author === ADMIN_USER);
+    const userThreads = allThreads.filter(t => t.posts[0]?.author !== ADMIN_USER);
 
     return (
         <section>
@@ -108,13 +116,27 @@ const AdminTab: React.FC<AdminTabProps> = ({ guides, threads, onApproveGuide, on
             )}
 
             {activeSubTab === 'manage' && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Approved Guides Management */}
+                <div className="space-y-8">
+                    {/* Admin Guides Management */}
                     <div>
-                        <h3 className="text-xl font-bold mb-4 text-gray-100">Manajemen Panduan ({approvedGuides.length})</h3>
+                        <h3 className="text-xl font-bold mb-4 text-gray-100">Manajemen Panduan Admin ({adminGuides.length})</h3>
                         <div className="bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-700 max-h-[60vh] overflow-y-auto">
                             <div className="space-y-3">
-                                {approvedGuides.length > 0 ? approvedGuides.map(guide => (
+                                {adminGuides.length > 0 ? adminGuides.map(guide => (
+                                    <div key={guide.id} className="bg-gray-900 p-3 rounded-md flex justify-between items-center gap-4">
+                                        <p className="font-semibold text-gray-200 flex-1 truncate">{guide.title}</p>
+                                        <button onClick={() => onDeleteGuide(guide.id)} className="p-2 bg-red-900/50 text-red-300 rounded-md hover:bg-red-800 flex-shrink-0" title="Hapus Panduan"><TrashIcon className="h-5 w-5"/></button>
+                                    </div>
+                                )) : <p className="text-gray-500 text-center py-4">Tidak ada panduan buatan Admin.</p>}
+                            </div>
+                        </div>
+                    </div>
+                    {/* User Guides Management */}
+                    <div>
+                        <h3 className="text-xl font-bold mb-4 text-gray-100">Manajemen Panduan Netizen ({userGuides.length})</h3>
+                        <div className="bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-700 max-h-[60vh] overflow-y-auto">
+                            <div className="space-y-3">
+                                {userGuides.length > 0 ? userGuides.map(guide => (
                                     <div key={guide.id} className="bg-gray-900 p-3 rounded-md flex justify-between items-center gap-4">
                                         <div>
                                             <p className="font-semibold text-gray-200">{guide.title}</p>
@@ -126,12 +148,26 @@ const AdminTab: React.FC<AdminTabProps> = ({ guides, threads, onApproveGuide, on
                             </div>
                         </div>
                     </div>
-                    {/* Regular Threads Management */}
+                     {/* Admin Threads Management */}
                     <div>
-                        <h3 className="text-xl font-bold mb-4 text-gray-100">Manajemen Diskusi ({regularThreads.length})</h3>
+                        <h3 className="text-xl font-bold mb-4 text-gray-100">Diskusi Buatan Admin ({adminThreads.length})</h3>
                         <div className="bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-700 max-h-[60vh] overflow-y-auto">
                             <div className="space-y-3">
-                                {regularThreads.length > 0 ? regularThreads.map(thread => (
+                                {adminThreads.length > 0 ? adminThreads.map(thread => (
+                                    <div key={thread.id} className="bg-gray-900 p-3 rounded-md flex justify-between items-center gap-4">
+                                        <p className="font-semibold text-gray-200 flex-1 truncate">{thread.title}</p>
+                                        <button onClick={() => onDeleteThread(thread.id)} className="p-2 bg-red-900/50 text-red-300 rounded-md hover:bg-red-800 flex-shrink-0" title="Hapus Diskusi"><TrashIcon className="h-5 w-5"/></button>
+                                    </div>
+                                )) : <p className="text-gray-500 text-center py-4">Tidak ada diskusi buatan Admin.</p>}
+                            </div>
+                        </div>
+                    </div>
+                     {/* User Threads Management */}
+                    <div>
+                        <h3 className="text-xl font-bold mb-4 text-gray-100">Diskusi Netizen ({userThreads.length})</h3>
+                        <div className="bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-700 max-h-[60vh] overflow-y-auto">
+                            <div className="space-y-3">
+                                {userThreads.length > 0 ? userThreads.map(thread => (
                                     <div key={thread.id} className="bg-gray-900 p-3 rounded-md flex justify-between items-center gap-4">
                                         <div>
                                             <p className="font-semibold text-gray-200">{thread.title}</p>
@@ -139,7 +175,7 @@ const AdminTab: React.FC<AdminTabProps> = ({ guides, threads, onApproveGuide, on
                                         </div>
                                         <button onClick={() => onDeleteThread(thread.id)} className="p-2 bg-red-900/50 text-red-300 rounded-md hover:bg-red-800 flex-shrink-0" title="Hapus Diskusi"><TrashIcon className="h-5 w-5"/></button>
                                     </div>
-                                )) : <p className="text-gray-500 text-center py-4">Tidak ada diskusi.</p>}
+                                )) : <p className="text-gray-500 text-center py-4">Tidak ada diskusi dari netizen.</p>}
                             </div>
                         </div>
                     </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Thread, Post, ThreadStatus } from '../types';
-import { PencilIcon, TrashIcon, EyeIcon, FlagIcon } from './icons';
+import { PencilIcon, TrashIcon, EyeIcon } from './icons';
 
 interface ForumThreadModalProps {
     thread: Thread;
@@ -10,6 +10,7 @@ interface ForumThreadModalProps {
     onDeletePost: (threadId: string, postId: string) => void;
     onVote: (threadId: string, voteType: 'green' | 'yellow' | 'red') => void;
     onReport: (threadId: string) => void;
+    onReportPost: (threadId: string, postId: string) => void;
     currentUser: string;
     adminUser: string;
 }
@@ -47,7 +48,7 @@ const statusText: { [key in ThreadStatus]: string } = {
     danger: 'Berisiko',
 };
 
-const ForumThreadModal: React.FC<ForumThreadModalProps> = ({ thread, onClose, onAddPost, onEditPost, onDeletePost, onVote, onReport, currentUser, adminUser }) => {
+const ForumThreadModal: React.FC<ForumThreadModalProps> = ({ thread, onClose, onAddPost, onEditPost, onDeletePost, onVote, onReport, onReportPost, currentUser, adminUser }) => {
     const [newPostText, setNewPostText] = useState('');
     const [editingPostId, setEditingPostId] = useState<string | null>(null);
     const [editingText, setEditingText] = useState('');
@@ -72,18 +73,12 @@ const ForumThreadModal: React.FC<ForumThreadModalProps> = ({ thread, onClose, on
         onEditPost(thread.id, postId, editingText);
         handleCancelEdit();
     };
-    
-    const handleDeleteClick = (postId: string) => {
-        if (window.confirm('Anda yakin ingin menghapus post ini?')) {
-            onDeletePost(thread.id, postId);
-        }
-    }
 
     const status = getThreadStatus(thread);
     const userVote = thread.greenVotes.includes(currentUser) ? 'green' : 
                      thread.yellowVotes.includes(currentUser) ? 'yellow' :
                      thread.redVotes.includes(currentUser) ? 'red' : null;
-    const hasReported = thread.reports.includes(currentUser);
+    const hasReportedThread = thread.reports.includes(currentUser);
 
     return (
         <div 
@@ -117,13 +112,13 @@ const ForumThreadModal: React.FC<ForumThreadModalProps> = ({ thread, onClose, on
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={() => onReport(thread.id)}
-                                disabled={hasReported}
-                                className={`p-2 rounded-md transition-colors ${
-                                    hasReported ? 'text-red-400 cursor-not-allowed' : 'text-gray-400 hover:bg-red-900/50 hover:text-red-300'
+                                disabled={hasReportedThread}
+                                className={`p-2 rounded-md transition-colors text-xl ${
+                                    hasReportedThread ? 'opacity-50 cursor-not-allowed' : 'opacity-70 hover:opacity-100'
                                 }`}
-                                title={hasReported ? 'Anda sudah melaporkan ini' : 'Lapor Diskusi'}
+                                title={hasReportedThread ? 'Anda sudah melaporkan ini' : 'Lapor Diskusi'}
                             >
-                                <FlagIcon className="h-4 w-4" />
+                                🚩
                             </button>
                         </div>
                     </div>
@@ -147,8 +142,11 @@ const ForumThreadModal: React.FC<ForumThreadModalProps> = ({ thread, onClose, on
                     <div className="space-y-4">
                         {thread.posts.map((post, index) => {
                             const isOriginalPost = index === 0;
-                            const canModify = post.author === currentUser || currentUser === adminUser;
                             const isCurrentUserPost = post.author === currentUser;
+                            const canModify = isCurrentUserPost || currentUser === adminUser;
+                            const hasReportedPost = post.reports.includes(currentUser);
+                            const canReportPost = !isCurrentUserPost && !hasReportedPost;
+
 
                             return (
                                 <div 
@@ -185,16 +183,33 @@ const ForumThreadModal: React.FC<ForumThreadModalProps> = ({ thread, onClose, on
                                                     </strong>
                                                     {post.text}
                                                 </p>
-                                                {canModify && (
-                                                    <div className="flex gap-2 flex-shrink-0 ml-4">
-                                                        <button onClick={() => handleEditClick(post)} title="Edit Post" className="text-gray-400 hover:text-blue-400">
-                                                            <PencilIcon className="h-4 w-4" />
+                                                <div className="flex gap-2 flex-shrink-0 ml-4 items-center">
+                                                    {canModify && (
+                                                        <>
+                                                            <button onClick={() => handleEditClick(post)} title="Edit Post" className="text-gray-400 hover:text-blue-400">
+                                                                <PencilIcon className="h-4 w-4" />
+                                                            </button>
+                                                            <button onClick={() => onDeletePost(thread.id, post.id)} title="Hapus Post" className="text-gray-400 hover:text-red-400">
+                                                                <TrashIcon className="h-4 w-4" />
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                    {canReportPost && (
+                                                         <button
+                                                            onClick={() => onReportPost(thread.id, post.id)}
+                                                            disabled={!canReportPost}
+                                                            className={`transition-opacity text-xl ${
+                                                                !canReportPost ? 'opacity-20 cursor-not-allowed' : 'opacity-60 hover:opacity-100'
+                                                            }`}
+                                                            title="Lapor Komentar"
+                                                        >
+                                                            🚩
                                                         </button>
-                                                        <button onClick={() => handleDeleteClick(post.id)} title="Hapus Post" className="text-gray-400 hover:text-red-400">
-                                                            <TrashIcon className="h-4 w-4" />
-                                                        </button>
-                                                    </div>
-                                                )}
+                                                    )}
+                                                    {hasReportedPost && (
+                                                         <span className="text-xl opacity-50" title="Anda sudah melaporkan komentar ini">🚩</span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     )}

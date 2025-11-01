@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import type { Thread, ThreadStatus } from '../types';
-import { ChatAlt2Icon, PlusCircleIcon, FlagIcon } from './icons';
+import type { Thread, ThreadStatus, ThreadCategory } from '../types';
+import { ChatAlt2Icon, PlusCircleIcon } from './icons';
+import { THREAD_CATEGORIES } from '../constants';
 
 interface ForumTabProps {
     threads: Thread[];
@@ -10,6 +11,8 @@ interface ForumTabProps {
     onOpenThreadDetail: (id: string) => void;
     onVote: (threadId: string, voteType: 'green' | 'yellow' | 'red') => void;
     onReport: (threadId: string) => void;
+    threadCategoryFilter: ThreadCategory | 'All';
+    setThreadCategoryFilter: (category: ThreadCategory | 'All') => void;
 }
 
 const getThreadStatus = (thread: Thread): ThreadStatus => {
@@ -43,7 +46,16 @@ const statusText: { [key in ThreadStatus]: string } = {
     danger: 'Diskusi Berisiko',
 };
 
-const ForumTab: React.FC<ForumTabProps> = ({ threads, currentUser, isAdminMode, onOpenThreadModal, onOpenThreadDetail, onVote, onReport }) => {
+const threadCategoryColors: { [key in ThreadCategory]: string } = {
+    "Umum": "bg-gray-700 text-gray-300 ring-1 ring-inset ring-gray-500/50",
+    "Kuliner": "bg-pink-900/50 text-pink-300 ring-1 ring-inset ring-pink-500/20",
+    "Transportasi": "bg-blue-900/50 text-blue-300 ring-1 ring-inset ring-blue-500/20",
+    "Lowongan Kerja": "bg-indigo-900/50 text-indigo-300 ring-1 ring-inset ring-indigo-500/20",
+    "Hiburan": "bg-purple-900/50 text-purple-300 ring-1 ring-inset ring-purple-500/20",
+};
+
+
+const ForumTab: React.FC<ForumTabProps> = ({ threads, currentUser, isAdminMode, onOpenThreadModal, onOpenThreadDetail, onVote, onReport, threadCategoryFilter, setThreadCategoryFilter }) => {
     const [isInfoVisible, setIsInfoVisible] = useState(true);
     
     const visibleThreads = threads.filter(t => isAdminMode || t.reports.length < 10);
@@ -89,7 +101,16 @@ const ForumTab: React.FC<ForumTabProps> = ({ threads, currentUser, isAdminMode, 
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div>
-                    <h3 className="text-xl font-bold mb-4 text-gray-100">Diskusi Terbaru</h3>
+                    <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
+                        <h3 className="text-xl font-bold text-gray-100">Diskusi Terbaru</h3>
+                        <select 
+                            value={threadCategoryFilter} 
+                            onChange={(e) => setThreadCategoryFilter(e.target.value as ThreadCategory | 'All')}
+                            className="w-full sm:w-auto px-3 py-2 rounded-md border border-gray-600 bg-gray-700 text-gray-100 focus:ring-blue-500 focus:border-blue-500 transition"
+                        >
+                            {THREAD_CATEGORIES.map(c => <option key={c} value={c}>{c === 'All' ? 'Semua Kategori' : c}</option>)}
+                        </select>
+                    </div>
                     <div className="space-y-4">
                         {visibleThreads.map(thread => {
                             const status = getThreadStatus(thread);
@@ -101,9 +122,14 @@ const ForumTab: React.FC<ForumTabProps> = ({ threads, currentUser, isAdminMode, 
                             return (
                                 <div key={thread.id} className="bg-gray-800 rounded-lg shadow-sm border border-gray-700 hover:border-blue-500 transition-colors flex flex-col">
                                     <div className='p-4 flex-grow'>
-                                        <div className="flex items-start gap-3">
-                                            <div className={`mt-1.5 w-3 h-3 rounded-full flex-shrink-0 ${statusColors[status]}`} title={statusText[status]}></div>
-                                            <h4 className="font-semibold text-gray-100 flex-1">{thread.title}</h4>
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="flex items-start gap-3 flex-1">
+                                                <div className={`mt-1.5 w-3 h-3 rounded-full flex-shrink-0 ${statusColors[status]}`} title={statusText[status]}></div>
+                                                <h4 className="font-semibold text-gray-100">{thread.title}</h4>
+                                            </div>
+                                            <div className={`text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ${threadCategoryColors[thread.category]}`}>
+                                                {thread.category}
+                                            </div>
                                         </div>
                                         <div className="mt-3 border-t border-gray-700 pt-3 space-y-3">
                                             {thread.posts[0] && (
@@ -146,12 +172,12 @@ const ForumTab: React.FC<ForumTabProps> = ({ threads, currentUser, isAdminMode, 
                                              <button
                                                 onClick={() => onReport(thread.id)}
                                                 disabled={hasReported}
-                                                className={`p-2 rounded-md transition-colors ${
-                                                    hasReported ? 'text-red-400 cursor-not-allowed' : 'text-gray-400 hover:bg-red-900/50 hover:text-red-300'
+                                                className={`p-2 rounded-md transition-colors text-xl ${
+                                                    hasReported ? 'opacity-50 cursor-not-allowed' : 'opacity-70 hover:opacity-100'
                                                 }`}
                                                 title={hasReported ? 'Anda sudah melaporkan ini' : 'Lapor Diskusi'}
                                             >
-                                                <FlagIcon className="h-4 w-4" />
+                                                🚩
                                             </button>
                                              <button 
                                                 onClick={() => onOpenThreadDetail(thread.id)}

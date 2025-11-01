@@ -1,5 +1,6 @@
 export type City = "Jakarta" | "Bogor" | "Depok" | "Tangerang" | "Bekasi";
 export type Category = "Transport" | "Wisata" | "Belanja" | "Kuliner" | "Umum";
+export type ThreadCategory = "Umum" | "Kuliner" | "Transportasi" | "Lowongan Kerja" | "Hiburan";
 export type ThreadStatus = 'trusted' | 'questionable' | 'danger';
 export type GuideStatus = 'pending' | 'approved';
 
@@ -24,11 +25,13 @@ export interface Post {
   id: string;
   author: string;
   text: string;
+  reports: string[]; // Array of usernames who reported
 }
 
 export interface Thread {
   id: string;
   title: string;
+  category: ThreadCategory;
   posts: Post[];
   views: number;
   greenVotes: string[]; // Array of usernames for 'Trusted'
@@ -50,4 +53,5 @@ export interface ContributionForm {
 export interface ThreadForm {
     title: string;
     text: string;
+    category: ThreadCategory;
 }
