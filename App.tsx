@@ -155,8 +155,8 @@ export default function App() {
   useEffect(() => {
     const fetchProfile = async () => {
         if (session?.user) {
-            // Retry mechanism to handle the delay in profile creation by the trigger
-            const maxRetries = 3;
+            // Increased retries to handle potential database trigger delays
+            const maxRetries = 5;
             const retryDelay = 1000; // 1 second
 
             for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -167,43 +167,53 @@ export default function App() {
                         .eq('id', session.user.id)
                         .single();
                     
-                    // If we get data, profile exists, success!
                     if (data) {
                         setProfile(data);
-                        setCurrentUser(data.display_name || 'User');
-                        return; // Exit the function successfully
+                        setCurrentUser(data.display_name || session.user.user_metadata?.full_name || 'User');
+                        return; // Success, profile loaded.
                     }
 
-                    // If there's an error, but it's not "row not found", it's a real error.
+                    // If there's a real error (not just 'not found'), log it and break.
                     if (error && error.code !== 'PGRST116') { // PGRST116 = "The result contains 0 rows"
                         throw error;
                     }
 
-                    // If profile is not found, wait and retry, unless it's the last attempt.
+                    // If profile is not found, wait and retry.
                     if (attempt < maxRetries) {
                         await new Promise(resolve => setTimeout(resolve, retryDelay));
                     } else {
-                        throw new Error("Profil pengguna tidak dapat ditemukan setelah beberapa kali percobaan.");
+                        // All retries failed. The user's request is NOT to be logged out.
+                        console.error("Gagal memuat profil setelah beberapa kali percobaan. Pengguna tetap login.");
+                        alert("Gagal memuat profil. Beberapa fitur mungkin tidak berfungsi dengan benar, tapi Anda tetap login. Coba refresh halaman nanti.");
+                        
+                        // Fallback to session data for display name to allow participation.
+                        const fallbackName = session.user.user_metadata?.full_name || session.user.email || 'User';
+                        setCurrentUser(fallbackName);
+                        setProfile(null); // Explicitly set profile to null
+                        return;
                     }
 
                 } catch (error) {
-                    // If this is the last attempt or an unrecoverable error, handle it.
+                    console.error("Terjadi kesalahan saat memuat profil:", error);
+                     // On the last attempt, show an error but keep the user logged in.
                     if (attempt === maxRetries) {
-                        console.error("Gagal memuat profil setelah retries:", error);
-                        alert("Gagal memuat profil pengguna. Anda akan dilogout untuk keamanan. Silakan coba login kembali.");
-                        handleLogout();
+                        alert("Terjadi kesalahan saat memuat profil. Anda tetap login.");
+                        const fallbackName = session.user.user_metadata?.full_name || session.user.email || 'User';
+                        setCurrentUser(fallbackName);
+                        setProfile(null);
                         return;
                     }
                 }
             }
         } else {
+            // No session, user is logged out or a guest.
             setProfile(null);
             setCurrentUser(GUEST_USER);
         }
     };
 
     fetchProfile();
-  }, [session, handleLogout]);
+  }, [session]);
 
 
   useEffect(() => {
