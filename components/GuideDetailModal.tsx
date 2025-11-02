@@ -1,7 +1,7 @@
 
 import React from 'react';
 import type { Guide } from '../types';
-import { LightBulbIcon, CheckCircleIcon, PencilIcon, TrashIcon } from './icons';
+import { LightBulbIcon, CheckCircleIcon, PencilIcon, TrashIcon, ShareIcon } from './icons';
 
 interface GuideDetailModalProps {
     guide: Guide;
@@ -10,9 +10,10 @@ interface GuideDetailModalProps {
     onClose: () => void;
     onEdit: (guide: Guide) => void;
     onDelete: (id: string) => void;
+    onShare: () => void;
 }
 
-const GuideDetailModal: React.FC<GuideDetailModalProps> = ({ guide, currentUser, adminUser, onClose, onEdit, onDelete }) => {
+const GuideDetailModal: React.FC<GuideDetailModalProps> = ({ guide, currentUser, adminUser, onClose, onEdit, onDelete, onShare }) => {
     const canModify = guide.user ? (guide.author === currentUser || currentUser === adminUser) : currentUser === adminUser;
 
     return (
@@ -66,6 +67,13 @@ const GuideDetailModal: React.FC<GuideDetailModalProps> = ({ guide, currentUser,
                         <span>Biaya: <strong className="text-gray-200">{guide.cost}</strong></span>
                     </div>
                     <div className="flex items-center gap-2">
+                         <button 
+                            onClick={onShare}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-700 text-white text-sm font-medium rounded-md hover:bg-gray-600 transition-colors"
+                        >
+                            <ShareIcon className="h-4 w-4"/>
+                            Bagikan
+                        </button>
                          {canModify && (
                             <>
                                 <button 

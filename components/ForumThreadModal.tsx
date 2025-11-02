@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Thread, Post, ThreadStatus } from '../types';
-import { PencilIcon, TrashIcon, EyeIcon } from './icons';
+import { PencilIcon, TrashIcon, EyeIcon, ShareIcon } from './icons';
 import { QUICK_SUGGESTIONS } from '../constants';
 import type { Session } from '@supabase/supabase-js';
 
@@ -13,6 +13,7 @@ interface ForumThreadModalProps {
     onVote: (threadId: string, voteType: 'green' | 'yellow' | 'red') => void;
     onReport: (threadId: string) => void;
     onReportPost: (threadId: string, postId: string) => void;
+    onShare: () => void;
     currentUser: string;
     voterId: string;
     adminUser: string;
@@ -53,7 +54,7 @@ const statusText: { [key in ThreadStatus]: string } = {
     danger: 'Hoax',
 };
 
-const ForumThreadModal: React.FC<ForumThreadModalProps> = ({ thread, onClose, onAddPost, onEditPost, onDeletePost, onVote, onReport, onReportPost, currentUser, voterId, adminUser, session, isAdminMode }) => {
+const ForumThreadModal: React.FC<ForumThreadModalProps> = ({ thread, onClose, onAddPost, onEditPost, onDeletePost, onVote, onReport, onReportPost, onShare, currentUser, voterId, adminUser, session, isAdminMode }) => {
     const [newPostText, setNewPostText] = useState('');
     const [editingPostId, setEditingPostId] = useState<string | null>(null);
     const [editingText, setEditingText] = useState('');
@@ -116,6 +117,13 @@ const ForumThreadModal: React.FC<ForumThreadModalProps> = ({ thread, onClose, on
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
+                            <button
+                                onClick={onShare}
+                                className="inline-flex items-center gap-1.5 px-3 py-1 border border-gray-600 text-gray-300 text-xs font-medium rounded-md hover:bg-gray-700 transition-colors"
+                            >
+                                <ShareIcon className="h-4 w-4"/>
+                                Bagikan
+                            </button>
                             <button
                                 onClick={() => onReport(thread.id)}
                                 disabled={hasReportedThread}
