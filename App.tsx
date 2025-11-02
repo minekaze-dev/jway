@@ -14,6 +14,7 @@ import ForumThreadModal from './components/ForumThreadModal';
 import AdminLoginModal from './components/AdminLoginModal';
 import TermsModal from './components/TermsModal';
 import PrivacyModal from './components/PrivacyModal';
+import GuidePreview from './components/GuidePreview';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import type { Session } from '@supabase/supabase-js';
 
@@ -755,66 +756,90 @@ export default function App() {
       <Footer onOpenTerms={() => setIsTermsModalOpen(true)} onOpenPrivacy={() => setIsPrivacyModalOpen(true)} />
       {selectedGuide && <GuideDetailModal guide={selectedGuide} onClose={handleCloseDetail} currentUser={currentUser} adminUser={ADMIN_USER} onEdit={handleOpenContributionModal} onDelete={handleDeleteGuide}/>}
       {selectedThread && <ForumThreadModal thread={selectedThread} onClose={handleCloseThreadDetail} onAddPost={handleAddPost} onEditPost={handleEditPost} onDeletePost={handleDeletePost} onVote={handleVote} onReport={handleReportThread} onReportPost={handleReportPost} currentUser={currentUser} voterId={session?.user?.id || voterId} adminUser={ADMIN_USER} session={session} isAdminMode={isAdminMode}/>}
-      {isContributionModalOpen && (
-         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={handleCloseContributionModal}>
-            <div className="bg-gray-800 text-gray-200 w-full max-w-2xl rounded-lg shadow-2xl border border-gray-700" onClick={(e) => e.stopPropagation()}>
-                <form onSubmit={handleSubmitContribution} className="overflow-hidden rounded-lg">
-                    <div className="p-6 border-b border-gray-700">
+      {isContributionModalOpen && (() => {
+        const previewGuide: Guide = {
+            id: editingGuide?.id || 'preview-id',
+            title: contribution.title || 'Judul Panduan Anda',
+            author: contribution.author,
+            city: contribution.city,
+            category: contribution.category,
+            difficulty: "Pemula",
+            duration: "—",
+            cost: contribution.cost || "—",
+            steps: contribution.stepsText.split("\n").map(s => s.trim()).filter(Boolean),
+            tips: contribution.tipsText.split("\n").map(s => s.trim()).filter(Boolean),
+            map: "https://www.google.com/maps",
+            user: true,
+            views: editingGuide?.views || 0,
+            status: editingGuide?.status || 'pending',
+        };
+
+        return (
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={handleCloseContributionModal}>
+                <div className="bg-gray-800 text-gray-200 w-full max-w-6xl rounded-lg shadow-2xl border border-gray-700 h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+                    <div className="p-6 border-b border-gray-700 flex-shrink-0">
                         <h3 className="text-xl font-bold text-gray-100">{editingGuide ? "Edit Panduan Anda" : "Formulir Kontribusi Panduan"}</h3>
                     </div>
-                    <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-                         <input 
-                            required 
-                            value={contribution.author} 
-                            onChange={(e) => setContribution({...contribution, author: e.target.value})} 
-                            placeholder="Nama Kontributor" 
-                            disabled={!!session || currentUser === ADMIN_USER}
-                            className="w-full px-3 py-2 text-gray-100 bg-gray-700 border border-gray-600 rounded-md disabled:opacity-70 disabled:cursor-not-allowed placeholder:text-gray-400" 
-                        />
-                        <input 
-                            required 
-                            value={contribution.title} 
-                            onChange={(e) => setContribution({...contribution, title: e.target.value})} 
-                            placeholder="Judul panduan" 
-                            className="w-full px-3 py-2 text-gray-100 bg-gray-700 border border-gray-600 rounded-md placeholder:text-gray-400" 
-                        />
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <select value={contribution.city} onChange={(e) => setContribution({...contribution, city: e.target.value as ContributionForm['city']})} className="w-full px-3 py-2 text-gray-100 bg-gray-700 border border-gray-600 rounded-md">
-                                {CITIES.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
-                            <select value={contribution.category} onChange={(e) => setContribution({...contribution, category: e.target.value as ContributionForm['category']})} className="w-full px-3 py-2 text-gray-100 bg-gray-700 border border-gray-600 rounded-md">
-                                {CATEGORIES.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
-                            <input value={contribution.cost} onChange={(e) => setContribution({...contribution, cost: e.target.value})} placeholder="Estimasi biaya" className="w-full px-3 py-2 text-gray-100 bg-gray-700 border border-gray-600 rounded-md placeholder:text-gray-400" />
+                    <div className="flex-grow min-h-0 grid md:grid-cols-2 gap-x-6 p-6 overflow-hidden">
+                        <form onSubmit={handleSubmitContribution} className="flex flex-col h-full overflow-hidden">
+                            <div className="space-y-4 overflow-y-auto pr-4 flex-grow">
+                                <input 
+                                    required 
+                                    value={contribution.author} 
+                                    onChange={(e) => setContribution({...contribution, author: e.target.value})} 
+                                    placeholder="Nama Kontributor" 
+                                    disabled={!!session || currentUser === ADMIN_USER}
+                                    className="w-full px-3 py-2 text-gray-100 bg-gray-700 border border-gray-600 rounded-md disabled:opacity-70 disabled:cursor-not-allowed placeholder:text-gray-400" 
+                                />
+                                <input 
+                                    required 
+                                    value={contribution.title} 
+                                    onChange={(e) => setContribution({...contribution, title: e.target.value})} 
+                                    placeholder="Judul panduan" 
+                                    className="w-full px-3 py-2 text-gray-100 bg-gray-700 border border-gray-600 rounded-md placeholder:text-gray-400" 
+                                />
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    <select value={contribution.city} onChange={(e) => setContribution({...contribution, city: e.target.value as ContributionForm['city']})} className="w-full px-3 py-2 text-gray-100 bg-gray-700 border border-gray-600 rounded-md">
+                                        {CITIES.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                    <select value={contribution.category} onChange={(e) => setContribution({...contribution, category: e.target.value as ContributionForm['category']})} className="w-full px-3 py-2 text-gray-100 bg-gray-700 border border-gray-600 rounded-md">
+                                        {CATEGORIES.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                    <input value={contribution.cost} onChange={(e) => setContribution({...contribution, cost: e.target.value})} placeholder="Estimasi biaya" className="w-full px-3 py-2 text-gray-100 bg-gray-700 border border-gray-600 rounded-md placeholder:text-gray-400" />
+                                </div>
+                                <textarea 
+                                    required 
+                                    value={contribution.stepsText} 
+                                    onChange={(e) => setContribution({...contribution, stepsText: e.target.value})} 
+                                    placeholder="Langkah per baris (pisah enter)" 
+                                    className="w-full px-3 py-2 text-gray-100 bg-gray-700 border border-gray-600 rounded-md h-32 placeholder:text-gray-400" 
+                                />
+                                <textarea 
+                                    value={contribution.tipsText} 
+                                    onChange={(e) => setContribution({...contribution, tipsText: e.target.value})} 
+                                    placeholder="Tips (opsional, per baris)" 
+                                    className="w-full px-3 py-2 text-gray-100 bg-gray-700 border border-gray-600 rounded-md h-24 placeholder:text-gray-400" 
+                                />
+                            </div>
+                            <div className="pt-6 flex-shrink-0">
+                                <p className="text-xs text-gray-500 mb-3">
+                                    Dengan mengirimkan, Anda setuju pada <button type="button" onClick={() => { setIsContributionModalOpen(false); setIsTermsModalOpen(true); }} className="underline hover:text-gray-300">Syarat & Ketentuan</button> kami dan menjamin konten tidak mengandung unsur SARA atau melanggar hukum.
+                                </p>
+                                <div className="flex gap-3">
+                                    <button type="submit" className="px-6 py-2 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition">{editingGuide ? 'Simpan Perubahan' : 'Kirim'}</button>
+                                    <button type="button" onClick={handleResetContributionForm} className="px-4 py-2 border border-gray-600 text-gray-300 font-semibold rounded-md hover:bg-gray-700 transition">Reset</button>
+                                    <button type="button" onClick={handleCloseContributionModal} className="ml-auto px-4 py-2 text-gray-400 hover:text-white rounded-md">Batal</button>
+                                </div>
+                            </div>
+                        </form>
+                        <div className="hidden md:block h-full overflow-y-auto">
+                           <GuidePreview guide={previewGuide} />
                         </div>
-                        <textarea 
-                            required 
-                            value={contribution.stepsText} 
-                            onChange={(e) => setContribution({...contribution, stepsText: e.target.value})} 
-                            placeholder="Langkah per baris (pisah enter)" 
-                            className="w-full px-3 py-2 text-gray-100 bg-gray-700 border border-gray-600 rounded-md h-28 placeholder:text-gray-400" 
-                        />
-                        <textarea 
-                            value={contribution.tipsText} 
-                            onChange={(e) => setContribution({...contribution, tipsText: e.target.value})} 
-                            placeholder="Tips (opsional, per baris)" 
-                            className="w-full px-3 py-2 text-gray-100 bg-gray-700 border border-gray-600 rounded-md h-20 placeholder:text-gray-400" 
-                        />
                     </div>
-                     <div className="px-6 py-4 bg-gray-900/50 border-t border-gray-700">
-                        <p className="text-xs text-gray-500 mb-3">
-                            Dengan mengirimkan, Anda setuju pada <button type="button" onClick={() => { setIsContributionModalOpen(false); setIsTermsModalOpen(true); }} className="underline hover:text-gray-300">Syarat & Ketentuan</button> kami dan menjamin konten tidak mengandung unsur SARA atau melanggar hukum.
-                        </p>
-                        <div className="flex gap-3">
-                            <button type="submit" className="px-6 py-2 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition">{editingGuide ? 'Simpan Perubahan' : 'Kirim'}</button>
-                            <button type="button" onClick={handleResetContributionForm} className="px-4 py-2 border border-gray-600 text-gray-300 font-semibold rounded-md hover:bg-gray-700 transition">Reset</button>
-                            <button type="button" onClick={handleCloseContributionModal} className="ml-auto px-4 py-2 text-gray-400 hover:text-white rounded-md">Batal</button>
-                        </div>
-                    </div>
-                </form>
+                </div>
             </div>
-        </div>
-      )}
+        )
+    })()}
       {isThreadModalOpen && (
          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={() => setIsThreadModalOpen(false)}>
             <div className="bg-gray-800 w-full max-w-lg rounded-xl shadow-2xl border border-gray-700" onClick={(e) => e.stopPropagation()}>
