@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import type { Thread, Post, ThreadStatus } from '../types';
 import { PencilIcon, TrashIcon, EyeIcon } from './icons';
+import { QUICK_SUGGESTIONS } from '../constants';
+
 
 interface ForumThreadModalProps {
     thread: Thread;
@@ -44,8 +46,8 @@ const statusColors: { [key in ThreadStatus]: string } = {
 
 const statusText: { [key in ThreadStatus]: string } = {
     trusted: 'Terpercaya',
-    questionable: 'Meragukan',
-    danger: 'Berisiko',
+    questionable: 'Belum Pasti',
+    danger: 'Hoax',
 };
 
 const ForumThreadModal: React.FC<ForumThreadModalProps> = ({ thread, onClose, onAddPost, onEditPost, onDeletePost, onVote, onReport, onReportPost, currentUser, adminUser }) => {
@@ -129,11 +131,11 @@ const ForumThreadModal: React.FC<ForumThreadModalProps> = ({ thread, onClose, on
                         </button>
                         <button onClick={() => onVote(thread.id, 'yellow')} className={`flex-1 justify-center py-2 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all ${userVote === 'yellow' ? 'bg-yellow-500 text-white ring-2 ring-yellow-300' : 'bg-yellow-500/20 text-yellow-300 hover:bg-yellow-500/40'}`}>
                             <span>{thread.yellowVotes.length}</span>
-                            <span>Meragukan</span>
+                            <span>Belum Pasti</span>
                         </button>
                         <button onClick={() => onVote(thread.id, 'red')} className={`flex-1 justify-center py-2 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all ${userVote === 'red' ? 'bg-red-500 text-white ring-2 ring-red-300' : 'bg-red-500/20 text-red-300 hover:bg-red-500/40'}`}>
                             <span>{thread.redVotes.length}</span>
-                            <span>Berisiko</span>
+                            <span>Hoax</span>
                         </button>
                     </div>
                 </div>
@@ -220,17 +222,31 @@ const ForumThreadModal: React.FC<ForumThreadModalProps> = ({ thread, onClose, on
                 </div>
 
                 <div className="px-6 py-4 bg-gray-900/50 border-t border-gray-700">
-                    <form onSubmit={handleAddPostSubmit} className="flex gap-2">
-                        <input
-                            type="text"
-                            value={newPostText}
-                            onChange={(e) => setNewPostText(e.target.value)}
-                            placeholder="Tulis balasan..."
-                            className="flex-grow px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-gray-100 placeholder-gray-400"
-                        />
-                        <button type="submit" className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-md shadow-sm hover:bg-blue-700 disabled:bg-gray-500" disabled={!newPostText.trim()}>
-                            Kirim
-                        </button>
+                    <form onSubmit={handleAddPostSubmit} className="space-y-2">
+                        <div className="flex flex-wrap gap-2">
+                            {QUICK_SUGGESTIONS.map((suggestion) => (
+                                <button
+                                key={suggestion.text}
+                                type="button"
+                                onClick={() => setNewPostText(prev => (prev ? prev + ' ' : '') + suggestion.text)}
+                                className="px-3 py-1.5 text-xs bg-gray-600 text-gray-200 rounded-full hover:bg-gray-500 transition-colors"
+                                >
+                                {suggestion.text}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                value={newPostText}
+                                onChange={(e) => setNewPostText(e.target.value)}
+                                placeholder="Tulis balasan..."
+                                className="flex-grow px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-gray-100 placeholder-gray-400"
+                            />
+                            <button type="submit" className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-md shadow-sm hover:bg-blue-700 disabled:bg-gray-500" disabled={!newPostText.trim()}>
+                                Kirim
+                            </button>
+                        </div>
                     </form>
                 </div>
             </div>

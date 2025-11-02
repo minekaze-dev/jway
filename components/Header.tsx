@@ -89,19 +89,22 @@ const Header: React.FC<HeaderProps> = ({ activeTab, onTabChange, onOpenAdminLogi
             {/* Mobile Bottom Navigation - Only on mobile */}
             <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-gray-900/80 backdrop-blur-lg border-t border-gray-700 z-50">
                 <div className="flex justify-around">
-                    {tabs.map((tab) => (
-                        <button
-                            key={tab}
-                            onClick={() => onTabChange(tab)}
-                            className={`flex-1 py-4 text-sm font-medium transition-colors duration-200 ${
-                                activeTab === tab
-                                    ? 'bg-blue-600 text-white'
-                                    : `text-gray-300 hover:bg-gray-700 ${tab === 'Admin' ? 'text-red-400' : ''}`
-                            }`}
-                        >
-                            {tab}
-                        </button>
-                    ))}
+                    {tabs.map((tab) => {
+                        const mobileTabText = tab === 'Panduan Netizen' ? 'Panduan' : tab;
+                        return (
+                            <button
+                                key={tab}
+                                onClick={() => onTabChange(tab)}
+                                className={`flex-1 py-4 text-sm font-medium transition-colors duration-200 ${
+                                    activeTab === tab
+                                        ? 'bg-blue-600 text-white'
+                                        : `text-gray-300 hover:bg-gray-700 ${tab === 'Admin' ? 'text-red-400' : ''}`
+                                }`}
+                            >
+                                {mobileTabText}
+                            </button>
+                        );
+                    })}
                 </div>
             </nav>
         </>

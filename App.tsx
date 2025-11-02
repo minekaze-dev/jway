@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { supabase } from './lib/supabase';
-import { CITIES, CATEGORIES, THREAD_CATEGORIES } from './constants';
+import { CITIES, CATEGORIES, THREAD_CATEGORIES, QUICK_SUGGESTIONS } from './constants';
 import type { Guide, Thread, ContributionForm, ThreadForm, City, Category, Post, ThreadCategory } from './types';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -61,7 +61,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ onClose, onSubmit, type }) =>
                                 />
                                 <label htmlFor={`reason-${reason}`} className="ml-3 block text-sm font-medium text-gray-300">
                                     {reason}
-                                </label>
+                                 </label>
                             </div>
                         ))}
                         {selectedReason === 'Lainnya' && (
@@ -432,7 +432,7 @@ export default function App() {
   const handleVote = async (threadId: string, voteType: 'green' | 'yellow' | 'red') => {
     const thread = threads.find(t => t.id === threadId);
     if (!thread) return;
-
+  
     const voteArrays = {
         green: [...(thread.greenVotes || [])],
         yellow: [...(thread.yellowVotes || [])],
@@ -463,9 +463,9 @@ export default function App() {
         
         const updatedThread = { 
             ...thread,
-            greenVotes: data.green_votes || [],
-            yellowVotes: data.yellow_votes || [],
-            redVotes: data.red_votes || [],
+            greenVotes: data.green_votes,
+            yellowVotes: data.yellow_votes,
+            redVotes: data.red_votes,
         };
         
         const updatedThreads = threads.map(t => t.id === threadId ? updatedThread : t);
@@ -655,6 +655,18 @@ export default function App() {
                             {THREAD_CATEGORIES.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
                          <textarea required value={threadForm.text} onChange={(e) => setThreadForm({...threadForm, text: e.target.value})} placeholder="Pesan Pertama" className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md h-28" />
+                         <div className="flex flex-wrap gap-2">
+                            {QUICK_SUGGESTIONS.map((suggestion) => (
+                                <button
+                                key={suggestion.text}
+                                type="button"
+                                onClick={() => setThreadForm(prev => ({ ...prev, text: (prev.text ? prev.text + ' ' : '') + suggestion.text }))}
+                                className="px-3 py-1.5 text-xs bg-gray-600 text-gray-200 rounded-full hover:bg-gray-500 transition-colors"
+                                >
+                                {suggestion.text}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                     <div className="px-6 py-4 bg-gray-900/50 border-t border-gray-700 flex gap-4">
                         <button type="submit" className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700">Post</button>
