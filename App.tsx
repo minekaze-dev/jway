@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import { CITIES, CATEGORIES, THREAD_CATEGORIES, QUICK_SUGGESTIONS } from './constants';
@@ -116,7 +117,7 @@ export default function App() {
   const [selectedGuide, setSelectedGuide] = useState<Guide | null>(null);
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
 
-  const [contribution, setContribution] = useState<ContributionForm>({ title: "", author: "", city: "Jakarta", category: "Transport", stepsText: "", tipsText: "", cost: "" });
+  const [contribution, setContribution] = useState<ContributionForm>({ title: "", author: "", cities: ["Jakarta"], category: "Transport", stepsText: "", tipsText: "", cost: "" });
   const [editingGuide, setEditingGuide] = useState<Guide | null>(null);
   const [threadForm, setThreadForm] = useState<ThreadForm>({ title: "", text: "", category: "Umum" });
 
@@ -223,8 +224,8 @@ export default function App() {
         const { data: guidesData, error: guidesError } = await supabase.from('guides').select('*').order('created_at', { ascending: false });
         if (guidesError) throw guidesError;
         setGuides(guidesData.map((g: any) => ({ 
-            ...g, 
-            map: g.map_url, 
+            ...g,
+            cities: g.cities || [],
             user: g.is_user_contribution,
             author: g.is_user_contribution ? g.author : ADMIN_USER
         })));
@@ -239,7 +240,7 @@ export default function App() {
             yellowVotes: t.yellow_votes || [],
             redVotes: t.red_votes || [],
             reports: t.reports || [],
-            posts: t.posts.map((p: any) => ({...p, text: p.content, reports: p.reports || []})).sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+            posts: (t.posts || []).map((p: any) => ({...p, text: p.content, reports: p.reports || []})).sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
         })));
         
       } catch (error) {
@@ -255,11 +256,11 @@ export default function App() {
   const filteredGuides = useMemo(() => {
     return guides
       .filter(g => g.status === 'approved')
-      .filter((g) => (cityFilter === "All" ? true : g.city === cityFilter))
+      .filter((g) => (cityFilter === "All" ? true : (g.cities || []).includes(cityFilter)))
       .filter((g) => (categoryFilter === "All" ? true : g.category === categoryFilter))
       .filter((g) =>
         g.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        g.steps.join(" ").toLowerCase().includes(searchQuery.toLowerCase())
+        (g.steps || []).join(" ").toLowerCase().includes(searchQuery.toLowerCase())
       );
   }, [guides, cityFilter, categoryFilter, searchQuery]);
 
@@ -322,13 +323,13 @@ export default function App() {
       if (guideToEdit) {
           setEditingGuide(guideToEdit);
           setContribution({
-              title: guideToEdit.title, author: guideToEdit.author || '', city: guideToEdit.city,
-              category: guideToEdit.category, stepsText: guideToEdit.steps.join('\n'),
-              tipsText: guideToEdit.tips.join('\n'), cost: guideToEdit.cost,
+              title: guideToEdit.title, author: guideToEdit.author || '', cities: guideToEdit.cities || [],
+              category: guideToEdit.category, stepsText: (guideToEdit.steps || []).join('\n'),
+              tipsText: (guideToEdit.tips || []).join('\n'), cost: guideToEdit.cost,
           });
       } else {
           setEditingGuide(null);
-          setContribution({ title: "", author: currentUser, city: "Jakarta", category: "Transport", stepsText: "", tipsText: "", cost: "" });
+          setContribution({ title: "", author: currentUser, cities: ["Jakarta"], category: "Transport", stepsText: "", tipsText: "", cost: "" });
       }
       setSelectedGuide(null);
       setIsContributionModalOpen(true);
@@ -337,7 +338,7 @@ export default function App() {
   const handleCloseContributionModal = () => {
       setIsContributionModalOpen(false);
       setEditingGuide(null);
-      setContribution({ title: "", author: "", city: "Jakarta", category: "Transport", stepsText: "", tipsText: "", cost: "" });
+      setContribution({ title: "", author: "", cities: ["Jakarta"], category: "Transport", stepsText: "", tipsText: "", cost: "" });
   };
   
   const handleResetContributionForm = () => {
@@ -345,7 +346,7 @@ export default function App() {
     setContribution({
       title: "",
       author: defaultAuthor,
-      city: "Jakarta",
+      cities: ["Jakarta"],
       category: "Transport",
       stepsText: "",
       tipsText: "",
@@ -356,15 +357,15 @@ export default function App() {
   const handleSubmitContribution = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!contribution.title.trim() || !contribution.stepsText.trim() || !contribution.author.trim()) {
-        alert('Mohon isi semua kolom yang wajib diisi (Judul, Nama, dan Langkah-langkah).');
+    if (!contribution.title.trim() || !contribution.stepsText.trim() || !contribution.author.trim() || (contribution.cities || []).length === 0) {
+        alert('Mohon isi semua kolom yang wajib diisi (Judul, Nama, Kota, dan Langkah-langkah).');
         return;
     }
 
     const guideData = {
         title: contribution.title || "Panduan dari Netizen",
         author: contribution.author.trim() || "Anonim",
-        city: contribution.city || "Jakarta",
+        cities: contribution.cities,
         category: contribution.category || "Transport",
         cost: contribution.cost || "—",
         steps: contribution.stepsText ? contribution.stepsText.split("\n").map((s) => s.trim()).filter(Boolean) : [],
@@ -392,20 +393,19 @@ export default function App() {
         const isAdmin = currentUser === ADMIN_USER;
         const newGuidePayload = {
             ...guideData,
-            id: `user-${Date.now()}`,
             difficulty: "Pemula",
             duration: "—",
-            map_url: "https://www.google.com/maps",
             is_user_contribution: !isAdmin,
             views: 0,
             status: isAdmin ? 'approved' : 'pending',
         };
         const { data, error } = await supabase.from('guides').insert(newGuidePayload).select().single();
         if (error) {
-            alert(`Error: ${error.message}`);
-            handleCloseContributionModal();
+            console.error("Error inserting guide", error);
+            // Don't close the modal on error, and show a more detailed message
+            alert(`Gagal menambahkan panduan baru:\n\n${error.message}\n\nSilakan periksa kembali isian Anda.`);
         } else {
-            const newGuide = { ...data, map: data.map_url, user: data.is_user_contribution, author: data.is_user_contribution ? data.author : ADMIN_USER };
+            const newGuide = { ...data, user: data.is_user_contribution, author: data.is_user_contribution ? data.author : ADMIN_USER };
             setGuides([newGuide, ...guides]);
             if (isAdmin) {
                 setActiveTab("Explorer");
@@ -452,25 +452,17 @@ export default function App() {
         return;
     }
 
-    const threadId = `th-${Date.now()}`;
     const { data: threadData, error: threadError } = await supabase.from('threads').insert({
-        id: threadId, 
         title: threadForm.title, 
         category: threadForm.category,
-        green_votes: [], 
-        yellow_votes: [], 
-        red_votes: [], 
-        reports: []
     }).select().single();
 
     if (threadError) { alert(`Error: ${threadError.message}`); return; }
 
     const { data: postData, error: postError } = await supabase.from('posts').insert({
-        id: `p-${Date.now()}`, 
-        thread_id: threadId, 
+        thread_id: threadData.id, 
         author: currentUser, 
-        content: threadForm.text, 
-        reports: []
+        content: threadForm.text
     }).select().single();
 
     if (postError) { alert(`Error: ${postError.message}`); return; }
@@ -506,7 +498,7 @@ export default function App() {
   const handleOpenThreadDetail = async (threadId: string) => {
     const thread = threads.find(t => t.id === threadId);
     if(thread) {
-        const newViews = thread.views + 1;
+        const newViews = (thread.views || 0) + 1;
         await supabase.from('threads').update({ views: newViews }).eq('id', threadId);
         setThreads(prev => prev.map(t => t.id === threadId ? { ...t, views: newViews } : t));
         setSelectedThread({ ...thread, views: newViews });
@@ -526,14 +518,14 @@ export default function App() {
     }
     
     const { data, error } = await supabase.from('posts').insert({
-        id: `p-${Date.now()}`, thread_id: threadId, author: currentUser, content: text, reports: []
+        thread_id: threadId, author: currentUser, content: text
     }).select().single();
 
     if(error) { alert(`Error: ${error.message}`); return; }
     
     const newPost: Post = { ...data, text: data.content, reports: data.reports || [] };
-    setThreads(threads.map(t => t.id === threadId ? { ...t, posts: [...t.posts, newPost] } : t));
-    if(selectedThread?.id === threadId) setSelectedThread(t => t ? ({...t, posts: [...t.posts, newPost]}): null);
+    setThreads(threads.map(t => t.id === threadId ? { ...t, posts: [...(t.posts || []), newPost] } : t));
+    if(selectedThread?.id === threadId) setSelectedThread(t => t ? ({...t, posts: [...(t.posts || []), newPost]}): null);
   };
 
   const handleEditPost = async (threadId: string, postId: string, newText: string) => {
@@ -545,12 +537,12 @@ export default function App() {
     const originalThreads = [...threads];
     const updatedThreads = threads.map(t => 
         t.id === threadId 
-        ? { ...t, posts: t.posts.map(p => p.id === postId ? { ...p, text: newText } : p) } 
+        ? { ...t, posts: (t.posts || []).map(p => p.id === postId ? { ...p, text: newText } : p) } 
         : t
     );
     setThreads(updatedThreads);
     if(selectedThread?.id === threadId) {
-        setSelectedThread(t => t ? ({...t, posts: t.posts.map(p => p.id === postId ? { ...p, text: newText } : p) }) : null);
+        setSelectedThread(t => t ? ({...t, posts: (t.posts || []).map(p => p.id === postId ? { ...p, text: newText } : p) }) : null);
     }
 
     const { error } = await supabase.rpc('handle_edit_post', {
@@ -566,7 +558,7 @@ export default function App() {
 
   const handleDeletePost = async (threadId: string, postId: string, skipConfirm = false) => {
     const thread = threads.find(t => t.id === threadId);
-    if(thread && thread.posts.length <= 1) { alert("Tidak bisa menghapus satu-satunya post."); return; }
+    if(thread && (thread.posts || []).length <= 1) { alert("Tidak bisa menghapus satu-satunya post."); return; }
     if (!skipConfirm && !window.confirm('Anda yakin ingin menghapus post ini?')) return;
      
     const { error } = await supabase.rpc('handle_delete_post', { post_id_in: postId });
@@ -575,8 +567,8 @@ export default function App() {
         return; 
     }
 
-    setThreads(threads.map(t => t.id === threadId ? { ...t, posts: t.posts.filter(p => p.id !== postId) } : t));
-    if(selectedThread?.id === threadId) setSelectedThread(t => t ? ({...t, posts: t.posts.filter(p => p.id !== postId) }) : null);
+    setThreads(threads.map(t => t.id === threadId ? { ...t, posts: (t.posts || []).filter(p => p.id !== postId) } : t));
+    if(selectedThread?.id === threadId) setSelectedThread(t => t ? ({...t, posts: (t.posts || []).filter(p => p.id !== postId) }) : null);
     if(skipConfirm) alert('Komentar telah dihapus secara otomatis karena melebihi batas laporan.');
   };
 
@@ -653,9 +645,9 @@ export default function App() {
 
     if (type === 'thread') {
         const thread = threads.find(t => t.id === threadId);
-        if (!thread || thread.reports.includes(currentVoterId)) return;
+        if (!thread || (thread.reports || []).includes(currentVoterId)) return;
 
-        const newReports = [...thread.reports, currentVoterId];
+        const newReports = [...(thread.reports || []), currentVoterId];
         const { error } = await supabase.from('threads').update({ reports: newReports }).eq('id', threadId);
 
         if (error) { alert(`Error: ${error.message}`); }
@@ -667,9 +659,9 @@ export default function App() {
     } else if (type === 'post' && postId) {
         const thread = threads.find(t => t.id === threadId);
         const post = thread?.posts.find(p => p.id === postId);
-        if (!thread || !post || post.reports.includes(currentVoterId)) return;
+        if (!thread || !post || (post.reports || []).includes(currentVoterId)) return;
 
-        const newReports = [...post.reports, currentVoterId];
+        const newReports = [...(post.reports || []), currentVoterId];
         
         if (newReports.length >= 10) {
             await handleDeletePost(threadId, postId, true); // skip confirmation
@@ -677,7 +669,7 @@ export default function App() {
             const { error } = await supabase.from('posts').update({ reports: newReports }).eq('id', postId);
             if (error) { alert(`Error: ${error.message}`); return; }
 
-            const updatedPosts = thread.posts.map(p => p.id === postId ? { ...p, reports: newReports } : p);
+            const updatedPosts = (thread.posts || []).map(p => p.id === postId ? { ...p, reports: newReports } : p);
             const updatedThreads = threads.map(t => t.id === threadId ? { ...t, posts: updatedPosts } : t);
             setThreads(updatedThreads);
             if (selectedThread?.id === threadId) {
@@ -693,7 +685,7 @@ export default function App() {
     const thread = threads.find(t => t.id === threadId);
     if (!thread) return;
     const currentVoterId = session?.user?.id || voterId;
-    if (thread.reports.includes(currentVoterId)) {
+    if ((thread.reports || []).includes(currentVoterId)) {
         alert('Anda sudah melaporkan diskusi ini.');
         return;
     }
@@ -705,7 +697,7 @@ export default function App() {
     const post = thread?.posts.find(p => p.id === postId);
     if (!thread || !post) return;
     const currentVoterId = session?.user?.id || voterId;
-    if (post.reports.includes(currentVoterId)) {
+    if ((post.reports || []).includes(currentVoterId)) {
         alert('Anda sudah melaporkan komentar ini.');
         return;
     }
@@ -716,6 +708,21 @@ export default function App() {
     const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
     if (error) console.error("Error logging in:", error);
   };
+  
+    const handleCityToggle = (cityToToggle: City) => {
+        setContribution(prev => {
+            const currentCities = prev.cities || [];
+            const newCities = currentCities.includes(cityToToggle)
+                ? currentCities.filter(c => c !== cityToToggle)
+                : [...currentCities, cityToToggle];
+
+            // Do not allow de-selecting the last city
+            if (newCities.length === 0) {
+                return prev;
+            }
+            return { ...prev, cities: newCities };
+        });
+    };
 
   const TABS = useMemo(() => {
     const baseTabs = ['Explorer', 'Panduan Netizen', 'Forum', 'About'];
@@ -761,14 +768,13 @@ export default function App() {
             id: editingGuide?.id || 'preview-id',
             title: contribution.title || 'Judul Panduan Anda',
             author: contribution.author,
-            city: contribution.city,
+            cities: contribution.cities,
             category: contribution.category,
             difficulty: "Pemula",
             duration: "—",
             cost: contribution.cost || "—",
             steps: contribution.stepsText.split("\n").map(s => s.trim()).filter(Boolean),
             tips: contribution.tipsText.split("\n").map(s => s.trim()).filter(Boolean),
-            map: "https://www.google.com/maps",
             user: true,
             views: editingGuide?.views || 0,
             status: editingGuide?.status || 'pending',
@@ -798,14 +804,30 @@ export default function App() {
                                     placeholder="Judul panduan" 
                                     className="w-full px-3 py-2 text-gray-100 bg-gray-700 border border-gray-600 rounded-md placeholder:text-gray-400" 
                                 />
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                    <select value={contribution.city} onChange={(e) => setContribution({...contribution, city: e.target.value as ContributionForm['city']})} className="w-full px-3 py-2 text-gray-100 bg-gray-700 border border-gray-600 rounded-md">
-                                        {CITIES.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
-                                    </select>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <select value={contribution.category} onChange={(e) => setContribution({...contribution, category: e.target.value as ContributionForm['category']})} className="w-full px-3 py-2 text-gray-100 bg-gray-700 border border-gray-600 rounded-md">
                                         {CATEGORIES.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
                                     </select>
                                     <input value={contribution.cost} onChange={(e) => setContribution({...contribution, cost: e.target.value})} placeholder="Estimasi biaya" className="w-full px-3 py-2 text-gray-100 bg-gray-700 border border-gray-600 rounded-md placeholder:text-gray-400" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-300 mb-2">Kota (bisa pilih lebih dari satu)</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {(CITIES.filter(c => c !== 'All') as City[]).map(c => (
+                                            <button
+                                                type="button"
+                                                key={c}
+                                                onClick={() => handleCityToggle(c)}
+                                                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                                                    (contribution.cities || []).includes(c)
+                                                        ? 'bg-blue-600 text-white ring-2 ring-inset ring-blue-500'
+                                                        : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+                                                }`}
+                                            >
+                                                {c}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
                                 <textarea 
                                     required 
@@ -853,18 +875,6 @@ export default function App() {
                             {THREAD_CATEGORIES.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
                          <textarea required value={threadForm.text} onChange={(e) => setThreadForm({...threadForm, text: e.target.value})} placeholder="Pesan Pertama" className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md h-28" />
-                         <div className="flex flex-wrap gap-2">
-                            {QUICK_SUGGESTIONS.map((suggestion) => (
-                                <button
-                                key={suggestion.text}
-                                type="button"
-                                onClick={() => setThreadForm(prev => ({ ...prev, text: (prev.text ? prev.text + ' ' : '') + suggestion.text }))}
-                                className="px-3 py-1.5 text-xs bg-gray-600 text-gray-200 rounded-full hover:bg-gray-500 transition-colors"
-                                >
-                                {suggestion.text}
-                                </button>
-                            ))}
-                        </div>
                     </div>
                      <div className="px-6 pb-2 text-xs text-gray-500">
                         <p>Dengan memposting, Anda setuju untuk mematuhi aturan komunitas, tidak menyebarkan informasi palsu, dan menghindari konten SARA.</p>

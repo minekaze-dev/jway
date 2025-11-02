@@ -22,9 +22,9 @@ interface ForumThreadModalProps {
 
 const getThreadStatus = (thread: Thread): ThreadStatus => {
     const votes = {
-        trusted: thread.greenVotes.length,
-        questionable: thread.yellowVotes.length,
-        danger: thread.redVotes.length,
+        trusted: (thread.greenVotes || []).length,
+        questionable: (thread.yellowVotes || []).length,
+        danger: (thread.redVotes || []).length,
     };
 
     const maxVotes = Math.max(votes.trusted, votes.questionable, votes.danger);
@@ -80,10 +80,10 @@ const ForumThreadModal: React.FC<ForumThreadModalProps> = ({ thread, onClose, on
     };
 
     const status = getThreadStatus(thread);
-    const userVote = thread.greenVotes.includes(voterId) ? 'green' : 
-                     thread.yellowVotes.includes(voterId) ? 'yellow' :
-                     thread.redVotes.includes(voterId) ? 'red' : null;
-    const hasReportedThread = thread.reports.includes(voterId);
+    const userVote = (thread.greenVotes || []).includes(voterId) ? 'green' : 
+                     (thread.yellowVotes || []).includes(voterId) ? 'yellow' :
+                     (thread.redVotes || []).includes(voterId) ? 'red' : null;
+    const hasReportedThread = (thread.reports || []).includes(voterId);
     const canPost = !!session || isAdminMode;
 
     return (
@@ -112,7 +112,7 @@ const ForumThreadModal: React.FC<ForumThreadModalProps> = ({ thread, onClose, on
                             </div>
                             <div className="flex items-center gap-1.5 font-medium" title="Dilihat">
                                 <EyeIcon className="h-5 w-5" />
-                                <span>{thread.views}</span>
+                                <span>{thread.views || 0}</span>
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -130,15 +130,15 @@ const ForumThreadModal: React.FC<ForumThreadModalProps> = ({ thread, onClose, on
                     </div>
                      <div className="mt-3 flex items-center justify-center gap-2">
                          <button onClick={() => onVote(thread.id, 'green')} className={`flex-1 justify-center py-2 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all ${userVote === 'green' ? 'bg-green-500 text-white ring-2 ring-green-300' : 'bg-green-500/20 text-green-300 hover:bg-green-500/40'}`}>
-                            <span>{thread.greenVotes.length}</span>
+                            <span>{(thread.greenVotes || []).length}</span>
                             <span>Terpercaya</span>
                         </button>
                         <button onClick={() => onVote(thread.id, 'yellow')} className={`flex-1 justify-center py-2 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all ${userVote === 'yellow' ? 'bg-yellow-500 text-white ring-2 ring-yellow-300' : 'bg-yellow-500/20 text-yellow-300 hover:bg-yellow-500/40'}`}>
-                            <span>{thread.yellowVotes.length}</span>
+                            <span>{(thread.yellowVotes || []).length}</span>
                             <span>Belum Pasti</span>
                         </button>
                         <button onClick={() => onVote(thread.id, 'red')} className={`flex-1 justify-center py-2 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all ${userVote === 'red' ? 'bg-red-500 text-white ring-2 ring-red-300' : 'bg-red-500/20 text-red-300 hover:bg-red-500/40'}`}>
-                            <span>{thread.redVotes.length}</span>
+                            <span>{(thread.redVotes || []).length}</span>
                             <span>Hoax</span>
                         </button>
                     </div>
@@ -146,11 +146,11 @@ const ForumThreadModal: React.FC<ForumThreadModalProps> = ({ thread, onClose, on
 
                 <div className="px-6 py-4 flex-grow max-h-[60vh] overflow-y-auto">
                     <div className="space-y-4">
-                        {thread.posts.map((post, index) => {
+                        {(thread.posts || []).map((post, index) => {
                             const isOriginalPost = index === 0;
                             const isCurrentUserPost = post.author === currentUser;
                             const canModify = isCurrentUserPost || currentUser === adminUser;
-                            const hasReportedPost = post.reports.includes(voterId);
+                            const hasReportedPost = (post.reports || []).includes(voterId);
                             const canReportPost = !isCurrentUserPost && !hasReportedPost;
 
 

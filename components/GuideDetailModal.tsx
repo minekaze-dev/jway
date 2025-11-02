@@ -1,6 +1,7 @@
+
 import React from 'react';
 import type { Guide } from '../types';
-import { MapIcon, LightBulbIcon, CheckCircleIcon, PencilIcon, TrashIcon } from './icons';
+import { LightBulbIcon, CheckCircleIcon, PencilIcon, TrashIcon } from './icons';
 
 interface GuideDetailModalProps {
     guide: Guide;
@@ -27,7 +28,7 @@ const GuideDetailModal: React.FC<GuideDetailModalProps> = ({ guide, currentUser,
                     <div className="flex justify-between items-start">
                         <div>
                             <h2 className="text-2xl font-bold text-gray-100">{guide.title}</h2>
-                            <div className="text-sm text-gray-400 mt-1">{guide.city} · {guide.category}</div>
+                            <div className="text-sm text-gray-400 mt-1">{(guide.cities || []).join(', ')} · {guide.category}</div>
                             <div className="text-xs text-gray-400 mt-1">
                                 {guide.user ? 'Kontribusi oleh: ' : 'Oleh: '} 
                                 <span className="font-medium text-gray-300">{guide.author}</span>
@@ -44,7 +45,7 @@ const GuideDetailModal: React.FC<GuideDetailModalProps> = ({ guide, currentUser,
                         <div>
                             <h3 className="font-semibold text-lg flex items-center gap-2 text-gray-200"><CheckCircleIcon className="h-5 w-5 text-blue-500" />Langkah-langkah</h3>
                             <ol className="list-decimal list-outside ml-5 mt-3 space-y-3 text-gray-300">
-                                {guide.steps.map((step, index) => <li key={index} className="pl-2">{step}</li>)}
+                                {(guide.steps || []).map((step, index) => <li key={index} className="pl-2">{step}</li>)}
                             </ol>
                         </div>
 
@@ -83,15 +84,6 @@ const GuideDetailModal: React.FC<GuideDetailModalProps> = ({ guide, currentUser,
                                 </button>
                             </>
                          )}
-                        <a 
-                            href={guide.map} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
-                        >
-                            <MapIcon className="h-4 w-4"/>
-                            Buka Peta
-                        </a>
                     </div>
                 </div>
             </div>

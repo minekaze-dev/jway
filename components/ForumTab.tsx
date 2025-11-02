@@ -21,9 +21,9 @@ interface ForumTabProps {
 
 const getThreadStatus = (thread: Thread): ThreadStatus => {
     const votes = {
-        trusted: thread.greenVotes.length,
-        questionable: thread.yellowVotes.length,
-        danger: thread.redVotes.length,
+        trusted: (thread.greenVotes || []).length,
+        questionable: (thread.yellowVotes || []).length,
+        danger: (thread.redVotes || []).length,
     };
 
     const maxVotes = Math.max(votes.trusted, votes.questionable, votes.danger);
@@ -62,7 +62,7 @@ const threadCategoryColors: { [key in ThreadCategory]: string } = {
 const ForumTab: React.FC<ForumTabProps> = ({ threads, voterId, session, isAdminMode, onOpenThreadModal, onOpenThreadDetail, onVote, onReport, threadCategoryFilter, setThreadCategoryFilter }) => {
     const [isInfoVisible, setIsInfoVisible] = useLocalStorage('jabo-way-forum-info-seen', true);
     
-    const visibleThreads = threads.filter(t => isAdminMode || t.reports.length < 10);
+    const visibleThreads = threads.filter(t => isAdminMode || (t.reports || []).length < 10);
     const canCreateThread = !!session || isAdminMode;
     
     return (
@@ -119,10 +119,11 @@ const ForumTab: React.FC<ForumTabProps> = ({ threads, voterId, session, isAdminM
                     <div className="space-y-4">
                         {visibleThreads.map(thread => {
                             const status = getThreadStatus(thread);
-                            const userVote = thread.greenVotes.includes(voterId) ? 'green' : 
-                                             thread.yellowVotes.includes(voterId) ? 'yellow' :
-                                             thread.redVotes.includes(voterId) ? 'red' : null;
-                            const hasReported = thread.reports.includes(voterId);
+                            const userVote = (thread.greenVotes || []).includes(voterId) ? 'green' : 
+                                             (thread.yellowVotes || []).includes(voterId) ? 'yellow' :
+                                             (thread.redVotes || []).includes(voterId) ? 'red' : null;
+                            const hasReported = (thread.reports || []).includes(voterId);
+                            const posts = thread.posts || [];
 
                             return (
                                 <div key={thread.id} className="bg-gray-800 rounded-lg shadow-sm border border-gray-700 hover:border-blue-500 transition-colors flex flex-col">
@@ -137,40 +138,40 @@ const ForumTab: React.FC<ForumTabProps> = ({ threads, voterId, session, isAdminM
                                             </div>
                                         </div>
                                         <div className="mt-3 border-t border-gray-700 pt-3 space-y-3">
-                                            {thread.posts[0] && (
-                                                <p key={thread.posts[0].id} className="text-sm text-gray-300 line-clamp-2">
-                                                    <strong className="text-gray-100">{thread.posts[0].author}:</strong> "{thread.posts[0].text}"
+                                            {posts[0] && (
+                                                <p key={posts[0].id} className="text-sm text-gray-300 line-clamp-2">
+                                                    <strong className="text-gray-100">{posts[0].author}:</strong> "{posts[0].text}"
                                                 </p>
                                             )}
                                             
-                                            {thread.posts.length > 2 && (
+                                            {posts.length > 2 && (
                                                 <div className="relative text-center">
                                                     <hr className="border-gray-700"/>
                                                     <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-xs text-gray-500 bg-gray-800 px-2">...</span>
                                                 </div>
                                             )}
 
-                                            {thread.posts.length > 1 && (
-                                                <p key={thread.posts[thread.posts.length - 1].id} className="text-sm text-gray-400 line-clamp-2 bg-gray-700/50 p-2 rounded-md">
-                                                    <strong className="text-gray-200">{thread.posts[thread.posts.length - 1].author}:</strong> "{thread.posts[thread.posts.length - 1].text}"
+                                            {posts.length > 1 && (
+                                                <p key={posts[posts.length - 1].id} className="text-sm text-gray-400 line-clamp-2 bg-gray-700/50 p-2 rounded-md">
+                                                    <strong className="text-gray-200">{posts[posts.length - 1].author}:</strong> "{posts[posts.length - 1].text}"
                                                 </p>
                                             )}
                                         </div>
                                     </div>
                                     <div className="px-4 py-3 bg-gray-900/50 border-t border-gray-700 flex items-center justify-between">
                                         <div className="flex items-center gap-2 text-gray-400 font-medium">
-                                            <div className="flex items-center gap-1.5" title={`${thread.posts.length} Balasan`}>
+                                            <div className="flex items-center gap-1.5" title={`${posts.length} Balasan`}>
                                                 <ChatAlt2Icon className="h-5 w-5" />
-                                                <span className="text-sm">{thread.posts.length}</span>
+                                                <span className="text-sm">{posts.length}</span>
                                             </div>
                                              <button onClick={() => onVote(thread.id, 'green')} className={`px-2 py-1 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all ${userVote === 'green' ? 'bg-green-500 text-white ring-2 ring-green-300' : 'bg-green-500/20 text-green-300 hover:bg-green-500/40'}`}>
-                                                <span>{thread.greenVotes.length}</span>
+                                                <span>{(thread.greenVotes || []).length}</span>
                                             </button>
                                             <button onClick={() => onVote(thread.id, 'yellow')} className={`px-2 py-1 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all ${userVote === 'yellow' ? 'bg-yellow-500 text-white ring-2 ring-yellow-300' : 'bg-yellow-500/20 text-yellow-300 hover:bg-yellow-500/40'}`}>
-                                                <span>{thread.yellowVotes.length}</span>
+                                                <span>{(thread.yellowVotes || []).length}</span>
                                             </button>
                                             <button onClick={() => onVote(thread.id, 'red')} className={`px-2 py-1 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all ${userVote === 'red' ? 'bg-red-500 text-white ring-2 ring-red-300' : 'bg-red-500/20 text-red-300 hover:bg-red-500/40'}`}>
-                                                <span>{thread.redVotes.length}</span>
+                                                <span>{(thread.redVotes || []).length}</span>
                                             </button>
                                         </div>
                                          <div className="flex items-center gap-2">

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import type { Guide, Thread } from '../types';
 import { TrashIcon, CheckCircleIcon, LogoutIcon } from './icons';
@@ -17,15 +18,15 @@ const AdminTab: React.FC<AdminTabProps> = ({ guides, threads, onApproveGuide, on
     const ADMIN_USER = 'Admin';
 
     const pendingGuides = guides.filter(g => g.status === 'pending');
-    const reportedThreads = threads.filter(t => t.reports && t.reports.length >= 10);
+    const reportedThreads = threads.filter(t => (t.reports || []).length >= 10);
     
     const approvedGuides = guides.filter(g => g.status === 'approved');
     const adminGuides = approvedGuides.filter(g => g.author === ADMIN_USER);
     const userGuides = approvedGuides.filter(g => g.author !== ADMIN_USER);
 
     const allThreads = threads;
-    const adminThreads = allThreads.filter(t => t.posts[0]?.author === ADMIN_USER);
-    const userThreads = allThreads.filter(t => t.posts[0]?.author !== ADMIN_USER);
+    const adminThreads = allThreads.filter(t => (t.posts || [])[0]?.author === ADMIN_USER);
+    const userThreads = allThreads.filter(t => (t.posts || [])[0]?.author !== ADMIN_USER);
 
     return (
         <section>
@@ -104,7 +105,7 @@ const AdminTab: React.FC<AdminTabProps> = ({ guides, threads, onApproveGuide, on
                                     <div key={thread.id} className="bg-gray-900 p-3 rounded-md flex justify-between items-center gap-4">
                                         <div>
                                             <p className="font-semibold text-gray-200">{thread.title}</p>
-                                            <p className="text-xs text-red-400 font-bold">{thread.reports.length} Laporan</p>
+                                            <p className="text-xs text-red-400 font-bold">{(thread.reports || []).length} Laporan</p>
                                         </div>
                                         <button onClick={() => onDeleteThread(thread.id)} className="p-2 bg-red-900/50 text-red-300 rounded-md hover:bg-red-800" title="Hapus Diskusi"><TrashIcon className="h-5 w-5"/></button>
                                     </div>
@@ -171,7 +172,7 @@ const AdminTab: React.FC<AdminTabProps> = ({ guides, threads, onApproveGuide, on
                                     <div key={thread.id} className="bg-gray-900 p-3 rounded-md flex justify-between items-center gap-4">
                                         <div>
                                             <p className="font-semibold text-gray-200">{thread.title}</p>
-                                            <p className="text-xs text-gray-400">oleh: {thread.posts[0]?.author}</p>
+                                            <p className="text-xs text-gray-400">oleh: {(thread.posts || [])[0]?.author}</p>
                                         </div>
                                         <button onClick={() => onDeleteThread(thread.id)} className="p-2 bg-red-900/50 text-red-300 rounded-md hover:bg-red-800 flex-shrink-0" title="Hapus Diskusi"><TrashIcon className="h-5 w-5"/></button>
                                     </div>

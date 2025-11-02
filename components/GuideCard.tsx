@@ -25,15 +25,18 @@ const cityBorderColors: { [key in City]: string } = {
 
 
 const GuideCard: React.FC<GuideCardProps> = ({ guide, onOpenDetail }) => {
+    const cityToUseForBorder = (guide.cities && guide.cities.length > 0) ? guide.cities[0] : "Jakarta";
+    const borderColorClass = cityBorderColors[cityToUseForBorder];
+
     return (
-        <article className={`bg-gray-800 rounded-lg shadow-md hover:shadow-xl hover:shadow-black/20 transition-shadow duration-300 flex flex-col overflow-hidden border border-gray-700 border-t-4 ${cityBorderColors[guide.city]}`}>
+        <article className={`bg-gray-800 rounded-lg shadow-md hover:shadow-xl hover:shadow-black/20 transition-shadow duration-300 flex flex-col overflow-hidden border border-gray-700 border-t-4 ${borderColorClass}`}>
             <div className="p-5 flex-grow">
                 <div className="flex items-start justify-between">
                     <div className="flex-1 pr-4">
                         <h3 className="font-bold text-lg text-gray-100 leading-tight">{guide.title}</h3>
                         <div className="mt-1 flex items-center text-xs text-gray-400 gap-1">
                             <LocationMarkerIcon className="h-3 w-3" />
-                            <span>{guide.city}</span>
+                            <span>{(guide.cities || []).join(', ')}</span>
                         </div>
                     </div>
                     <div className={`text-xs font-semibold px-2.5 py-1 rounded-full ${categoryColors[guide.category]}`}>
@@ -41,14 +44,14 @@ const GuideCard: React.FC<GuideCardProps> = ({ guide, onOpenDetail }) => {
                     </div>
                 </div>
                 <p className="text-sm text-gray-300 mt-3 line-clamp-2">
-                    {guide.steps.slice(0, 2).join(' ')}
+                    {(guide.steps || []).slice(0, 2).join(' ')}
                 </p>
             </div>
             <div className="px-5 py-3 bg-gray-800/50 border-t border-gray-700 flex items-center justify-between">
                  <div className="flex items-center gap-4">
                     <div className="flex items-center gap-1.5 text-xs text-gray-400">
                         <EyeIcon className="h-4 w-4" />
-                        <span className="font-medium">{guide.views.toLocaleString('id-ID')}</span>
+                        <span className="font-medium">{(guide.views || 0).toLocaleString('id-ID')}</span>
                     </div>
                     {guide.user && (
                         <span className="flex items-center gap-1 text-xs bg-yellow-900/50 text-yellow-300 px-2 py-0.5 rounded-full ring-1 ring-inset ring-yellow-500/20">
