@@ -4,6 +4,7 @@ import { GoogleIcon, LogoutIcon } from './icons';
 
 interface HeaderProps {
     activeTab: string;
+    onTabChange: (tab: string) => void;
     onOpenAdminLoginModal: () => void;
     tabs: string[];
     session: Session | null;
@@ -11,7 +12,7 @@ interface HeaderProps {
     onLogout: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ activeTab, onOpenAdminLoginModal, tabs, session, onLogin, onLogout }) => {
+const Header: React.FC<HeaderProps> = ({ activeTab, onTabChange, onOpenAdminLoginModal, tabs, session, onLogin, onLogout }) => {
     const [logoClickCount, setLogoClickCount] = useState(0);
     const clickTimeoutRef = useRef<number | null>(null);
 
@@ -42,7 +43,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, onOpenAdminLoginModal, tabs,
             clickTimeoutRef.current = window.setTimeout(() => {
                 if (newCount === 1) {
                     // If after the timeout, the count is still 1, it was a single click
-                    window.location.hash = '#/Explorer';
+                    onTabChange('Explorer');
                 }
                 // Reset for the next sequence
                 setLogoClickCount(0);
@@ -77,9 +78,9 @@ const Header: React.FC<HeaderProps> = ({ activeTab, onOpenAdminLoginModal, tabs,
                         <div className="hidden md:flex items-center gap-6">
                             <nav className="flex items-center gap-2">
                                 {tabs.map((tab) => (
-                                    <a
+                                    <button
                                         key={tab}
-                                        href={`#/${encodeURIComponent(tab)}`}
+                                        onClick={() => onTabChange(tab)}
                                         className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
                                             activeTab === tab
                                                 ? 'bg-blue-600 text-white shadow-sm'
@@ -87,7 +88,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, onOpenAdminLoginModal, tabs,
                                         }`}
                                     >
                                         {tab}
-                                    </a>
+                                    </button>
                                 ))}
                             </nav>
                             <div className="border-l border-gray-700 h-8"></div>
@@ -115,17 +116,17 @@ const Header: React.FC<HeaderProps> = ({ activeTab, onOpenAdminLoginModal, tabs,
                     {tabs.map((tab) => {
                         const mobileTabText = tab === 'Panduan Netizen' ? 'Panduan' : tab;
                         return (
-                            <a
+                            <button
                                 key={tab}
-                                href={`#/${encodeURIComponent(tab)}`}
-                                className={`flex-1 text-center py-4 text-sm font-medium transition-colors duration-200 ${
+                                onClick={() => onTabChange(tab)}
+                                className={`flex-1 py-4 text-sm font-medium transition-colors duration-200 ${
                                     activeTab === tab
                                         ? 'bg-blue-600 text-white'
                                         : `text-gray-300 hover:bg-gray-700 ${tab === 'Admin' ? 'text-red-400' : ''}`
                                 }`}
                             >
                                 {mobileTabText}
-                            </a>
+                            </button>
                         );
                     })}
                 </div>

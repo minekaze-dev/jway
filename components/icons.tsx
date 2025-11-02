@@ -100,9 +100,3 @@ export const GoogleIcon: React.FC<IconProps> = (props) => (
         <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571l6.19,5.238C43.021,36.251,44,30.651,44,24C44,22.659,43.862,21.35,43.611,20.083z" />
     </svg>
 );
-
-export const ShareIcon: React.FC<IconProps> = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.195.025.39.05.588.08a2.25 2.25 0 011.933 2.338V15.5a2.25 2.25 0 01-1.933 2.338c-.198.03-.393.055-.588.08M14.25 12l.007.007a2.25 2.25 0 100-3.007M14.25 12a2.25 2.25 0 000 2.993M14.25 12l-5.043 2.522M14.25 12l-5.043-2.522m5.043 5.044l5.043 2.522m-5.043-10.088l5.043-2.522" />
-    </svg>
-);

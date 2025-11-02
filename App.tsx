@@ -128,7 +128,6 @@ export default function App() {
   const [reportTarget, setReportTarget] = useState<{type: 'thread' | 'post', threadId: string, postId?: string} | null>(null);
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
 
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [currentUser, setCurrentUser] = useState(GUEST_USER);
@@ -253,63 +252,6 @@ export default function App() {
     };
     fetchData();
   }, []);
-  
-  const TABS = useMemo(() => {
-    const baseTabs = ['Explorer', 'Panduan Netizen', 'Forum', 'About'];
-    if (isAdminMode) return [...baseTabs, 'Admin'];
-    return baseTabs;
-  }, [isAdminMode]);
-
-
-  // ROUTING LOGIC
-  useEffect(() => {
-    const handleRouteChange = async () => {
-        const hash = window.location.hash.slice(1);
-        const [path, id] = hash.split('/');
-
-        const findGuide = (guideId: string) => guides.find(g => g.id === guideId);
-        const findThread = (threadId: string) => threads.find(t => t.id === threadId);
-
-        if (path === 'guides' && id) {
-            const guide = findGuide(id);
-            if (guide) {
-                const newViews = (guide.views || 0) + 1;
-                await supabase.from('guides').update({ views: newViews }).eq('id', id);
-                setGuides(prev => prev.map(g => g.id === id ? { ...g, views: newViews } : g));
-                setSelectedGuide({ ...guide, views: newViews });
-                setActiveTab('Explorer');
-            } else if (!loading) {
-                console.warn(`Guide with id ${id} not found.`);
-                window.location.hash = '#/Explorer';
-            }
-        } else if (path === 'threads' && id) {
-            const thread = findThread(id);
-            if (thread) {
-                const newViews = (thread.views || 0) + 1;
-                await supabase.from('threads').update({ views: newViews }).eq('id', thread.id);
-                setThreads(prev => prev.map(t => t.id === id ? { ...t, views: newViews } : t));
-                setSelectedThread({ ...thread, views: newViews });
-                setActiveTab('Forum');
-            } else if (!loading) {
-                console.warn(`Thread with id ${id} not found.`);
-                window.location.hash = '#/Forum';
-            }
-        } else {
-            const tabName = decodeURIComponent(path || 'Explorer');
-            if (TABS.includes(tabName)) {
-                setActiveTab(tabName);
-                setSelectedGuide(null);
-                setSelectedThread(null);
-            } else {
-                window.location.hash = '#/Explorer';
-            }
-        }
-    };
-
-    handleRouteChange();
-    window.addEventListener('hashchange', handleRouteChange);
-    return () => window.removeEventListener('hashchange', handleRouteChange);
-  }, [guides, threads, loading, TABS]);
 
   const filteredGuides = useMemo(() => {
     return guides
@@ -331,14 +273,28 @@ export default function App() {
   }, [cityFilter, categoryFilter, searchQuery]);
 
   const guidesToShow = useMemo(() => filteredGuides.slice(0, visibleGuidesCount), [filteredGuides, visibleGuidesCount]);
-  
-  const handleOpenDetail = (id: string) => { window.location.hash = `#/guides/${id}`; };
-  const handleCloseDetail = () => { window.location.hash = `#/${activeTab}`; };
-  const handleOpenThreadDetail = (id: string) => { window.location.hash = `#/threads/${id}`; };
-  const handleCloseThreadDetail = () => { window.location.hash = `#/${activeTab}`; };
 
   const handleLoadMoreGuides = () => setVisibleGuidesCount(prev => prev + GUIDES_PER_PAGE);
+
+  const handleOpenDetail = useCallback(async (id: string) => {
+    const guide = guides.find((g) => g.id === id);
+    if (guide) {
+      const newViews = (guide.views || 0) + 1;
+      const { error } = await supabase.from('guides').update({ views: newViews }).eq('id', id);
+      if (error) console.error("Error updating views:", error);
+      else setGuides(prev => prev.map(g => g.id === id ? { ...g, views: newViews } : g));
+      setSelectedGuide({ ...guide, views: newViews });
+    }
+  }, [guides]);
+
+  const handleCloseDetail = () => setSelectedGuide(null);
   
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setSelectedGuide(null); 
+    setSelectedThread(null);
+  };
+
   const handleEnterAdminMode = () => {
     setIsAdminMode(true);
     setCurrentUser(ADMIN_USER);
@@ -349,7 +305,7 @@ export default function App() {
     if (window.confirm('Anda yakin ingin keluar dari Mode Admin?')) {
         setIsAdminMode(false);
         setCurrentUser(session && profile ? profile.display_name : GUEST_USER);
-        window.location.hash = '#/Explorer';
+        setActiveTab('Explorer');
         alert('Mode Admin dinonaktifkan.');
     }
   }, [session, profile]);
@@ -452,10 +408,10 @@ export default function App() {
             const newGuide = { ...data, user: data.is_user_contribution, author: data.is_user_contribution ? data.author : ADMIN_USER };
             setGuides([newGuide, ...guides]);
             if (isAdmin) {
-                window.location.hash = '#/Explorer';
+                setActiveTab("Explorer");
                 alert("Panduan berhasil dibuat dan langsung dipublikasikan.");
             } else {
-                window.location.hash = '#/Panduan Netizen';
+                setActiveTab("Panduan Netizen");
                 alert("Kontribusi berhasil dikirim dan sedang menunggu tinjauan admin.");
             }
             handleCloseContributionModal();
@@ -479,7 +435,7 @@ export default function App() {
               alert(`Error: ${error.message}`);
           } else {
               setGuides(guides.filter(g => g.id !== guideId));
-              handleCloseDetail();
+              setSelectedGuide(null);
               alert('Panduan telah dihapus.');
           }
       }
@@ -533,11 +489,23 @@ export default function App() {
           alert(`Error: ${error.message}`);
       } else {
           setThreads(threads.filter(t => t.id !== threadId));
-          handleCloseThreadDetail();
+          setSelectedThread(null);
           alert('Thread telah dihapus.');
       }
     }
   };
+  
+  const handleOpenThreadDetail = async (threadId: string) => {
+    const thread = threads.find(t => t.id === threadId);
+    if(thread) {
+        const newViews = (thread.views || 0) + 1;
+        await supabase.from('threads').update({ views: newViews }).eq('id', threadId);
+        setThreads(prev => prev.map(t => t.id === threadId ? { ...t, views: newViews } : t));
+        setSelectedThread({ ...thread, views: newViews });
+    }
+  };
+
+  const handleCloseThreadDetail = () => setSelectedThread(null);
   
   const handleAddPost = async (threadId: string, text: string) => {
     if (!text.trim()) {
@@ -755,24 +723,14 @@ export default function App() {
             return { ...prev, cities: newCities };
         });
     };
-    
-    const showToast = (message: string) => {
-        setToastMessage(message);
-        setTimeout(() => setToastMessage(''), 2500);
-    };
 
-    const handleShare = () => {
-        navigator.clipboard.writeText(window.location.href)
-            .then(() => {
-                showToast('Tautan berhasil disalin!');
-            })
-            .catch(err => {
-                console.error('Gagal menyalin tautan: ', err);
-                showToast('Gagal menyalin tautan.');
-            });
-    };
+  const TABS = useMemo(() => {
+    const baseTabs = ['Explorer', 'Panduan Netizen', 'Forum', 'About'];
+    if (isAdminMode) return [...baseTabs, 'Admin'];
+    return baseTabs;
+  }, [isAdminMode]);
 
-  if (loading && !guides.length && !threads.length) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-900 text-gray-200">
         <div className="text-center">
@@ -787,6 +745,7 @@ export default function App() {
     <div className="min-h-screen bg-gray-900 text-gray-200 font-sans flex flex-col">
       <Header 
         activeTab={activeTab} 
+        onTabChange={handleTabChange} 
         tabs={TABS} 
         onOpenAdminLoginModal={() => setIsAdminLoginModalOpen(true)}
         session={session}
@@ -802,8 +761,8 @@ export default function App() {
         {activeTab === 'Admin' && isAdminMode && <AdminTab guides={guides} threads={threads} onApproveGuide={handleApproveGuide} onDeleteGuide={handleDeleteGuide} onDeleteThread={handleDeleteThread} onAdminLogout={handleAdminLogout}/>}
       </main>
       <Footer onOpenTerms={() => setIsTermsModalOpen(true)} onOpenPrivacy={() => setIsPrivacyModalOpen(true)} />
-      {selectedGuide && <GuideDetailModal guide={selectedGuide} onClose={handleCloseDetail} currentUser={currentUser} adminUser={ADMIN_USER} onEdit={handleOpenContributionModal} onDelete={handleDeleteGuide} onShare={handleShare}/>}
-      {selectedThread && <ForumThreadModal thread={selectedThread} onClose={handleCloseThreadDetail} onAddPost={handleAddPost} onEditPost={handleEditPost} onDeletePost={handleDeletePost} onVote={handleVote} onReport={handleReportThread} onReportPost={handleReportPost} currentUser={currentUser} voterId={session?.user?.id || voterId} adminUser={ADMIN_USER} session={session} isAdminMode={isAdminMode} onShare={handleShare}/>}
+      {selectedGuide && <GuideDetailModal guide={selectedGuide} onClose={handleCloseDetail} currentUser={currentUser} adminUser={ADMIN_USER} onEdit={handleOpenContributionModal} onDelete={handleDeleteGuide}/>}
+      {selectedThread && <ForumThreadModal thread={selectedThread} onClose={handleCloseThreadDetail} onAddPost={handleAddPost} onEditPost={handleEditPost} onDeletePost={handleDeletePost} onVote={handleVote} onReport={handleReportThread} onReportPost={handleReportPost} currentUser={currentUser} voterId={session?.user?.id || voterId} adminUser={ADMIN_USER} session={session} isAdminMode={isAdminMode}/>}
       {isContributionModalOpen && (() => {
         const previewGuide: Guide = {
             id: editingGuide?.id || 'preview-id',
@@ -938,11 +897,6 @@ export default function App() {
       {isAdminLoginModalOpen && <AdminLoginModal onClose={() => setIsAdminLoginModalOpen(false)} onLogin={handleAdminLoginSubmit}/>}
       {isTermsModalOpen && <TermsModal onClose={() => setIsTermsModalOpen(false)} />}
       {isPrivacyModalOpen && <PrivacyModal onClose={() => setIsPrivacyModalOpen(false)} />}
-      {toastMessage && (
-        <div className="fixed bottom-24 md:bottom-8 right-8 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg transition-transform duration-300 ease-in-out transform translate-y-0">
-            {toastMessage}
-        </div>
-      )}
     </div>
   );
 }
