@@ -68,7 +68,7 @@ const ForumTab: React.FC<ForumTabProps> = ({ threads, voterId, session, isAdminM
     return (
         <section>
             <div className="text-center mb-8">
-                <h2 className="text-3xl font-bold text-gray-100">Forum Komunitas</h2>
+                <h2 className="text-3xl font-bold text-gray-100">Forum Terbuka</h2>
                 <p className="mt-2 text-md text-gray-400 max-w-2xl mx-auto">
                     Punya pertanyaan atau ingin diskusi? Mulai percakapan di sini.
                 </p>
