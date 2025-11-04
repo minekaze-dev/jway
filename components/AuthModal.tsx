@@ -34,13 +34,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onGoogleLogin }) => {
                 const { error } = await supabase.auth.signUp({
                     email,
                     password,
-                    options: { data: { full_name: displayName } }
+                    options: { 
+                        data: { full_name: displayName || email.split('@')[0] },
+                        emailRedirectTo: window.location.origin
+                    }
                 });
                 if (error) throw error;
-                setMessage('Pendaftaran berhasil! Silakan masuk dengan akun baru Anda.');
-                setView('login');
-                setPassword('');
-                setDisplayName('');
+                setMessage('Pendaftaran berhasil! Silakan cek email Anda untuk link konfirmasi sebelum masuk.');
+                setView('message');
             } else if (view === 'forgot_password') {
                 const { error } = await supabase.auth.resetPasswordForEmail(email, {
                     redirectTo: window.location.origin,
@@ -55,7 +56,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onGoogleLogin }) => {
             } else if (err.message === 'User already registered') {
                 setError('Email ini sudah terdaftar. Silakan coba masuk.');
             } else if (err.message === 'Email not confirmed') {
-                 setError('Email belum dikonfirmasi. Silakan periksa kotak masuk Anda.');
+                 setError('Email belum dikonfirmasi. Silakan periksa kotak masuk Anda dan klik link verifikasi.');
             }
             else {
                 setError(err.error_description || err.message);
@@ -82,11 +83,19 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onGoogleLogin }) => {
     const renderContent = () => {
         if (view === 'message') {
             return (
-                <div className="p-6 text-center">
-                    <p className="text-gray-200">{message}</p>
-                    <button onClick={() => switchView('login')} className="mt-4 w-full px-4 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700">
-                        Kembali ke Login
-                    </button>
+                 <div className="p-6">
+                    <div className="flex justify-between items-start mb-4">
+                         <h3 className="text-xl font-bold text-gray-100">Cek Email Anda</h3>
+                         <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-300 transition-colors">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                    <div className="text-center py-4">
+                        <p className="text-gray-200">{message}</p>
+                        <button onClick={() => switchView('login')} className="mt-6 w-full px-4 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700">
+                            Kembali ke Login
+                        </button>
+                    </div>
                 </div>
             )
         }
