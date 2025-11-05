@@ -108,6 +108,7 @@ const GUIDES_PER_PAGE = 9;
 export default function App() {
   const [guides, setGuides] = useState<Guide[]>([]);
   const [threads, setThreads] = useState<Thread[]>([]);
+  const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [activeTab, setActiveTab] = useState('Explorer');
@@ -144,7 +145,17 @@ export default function App() {
       setSession(null);
       setProfile(null);
       setCurrentUser(GUEST_USER);
+      setIsAdminMode(false);
   }, []);
+
+  const isUserBlocked = useCallback(() => {
+    if (profile?.is_blocked) {
+        alert('Akun Anda diblokir dan tidak dapat melakukan tindakan ini.');
+        return true;
+    }
+    return false;
+  }, [profile]);
+
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -160,56 +171,51 @@ export default function App() {
     const manageProfile = async () => {
         if (session?.user) {
             try {
-                // 1. Try to fetch the profile
                 let { data: profileData, error: fetchError } = await supabase
                     .from('profiles')
                     .select('*')
                     .eq('id', session.user.id)
                     .single();
 
-                // 2. If profile doesn't exist (e.g., first login), create it
-                if (fetchError && fetchError.code === 'PGRST116') { // PGRST116 = "The result contains 0 rows"
+                if (fetchError && fetchError.code === 'PGRST116') {
                     console.log('Profil tidak ditemukan, membuat profil baru...');
                     const { data: newProfile, error: insertError } = await supabase
                         .from('profiles')
                         .insert({
                             id: session.user.id,
-                            display_name: session.user.user_metadata?.full_name || session.user.email || 'Pengguna Baru'
+                            display_name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Pengguna Baru'
                         })
                         .select()
                         .single();
                     
-                    if (insertError) {
-                        throw insertError; // Throw error to be caught by the catch block
-                    }
-                    
-                    profileData = newProfile; // Use the newly created profile data
+                    if (insertError) throw insertError;
+                    profileData = newProfile;
                 } else if (fetchError) {
-                    throw fetchError; // Throw other types of fetch errors
+                    throw fetchError;
                 }
 
-                // 3. Set the profile and current user state
                 if (profileData) {
+                    if (profileData.is_blocked) {
+                        alert('Akun Anda telah diblokir oleh admin.');
+                        await supabase.auth.signOut();
+                        return;
+                    }
                     setProfile(profileData);
                     setCurrentUser(profileData.display_name || 'User');
                 } else {
-                    // This case is unlikely but serves as a fallback
                     const fallbackName = session.user.user_metadata?.full_name || session.user.email || 'User';
                     setCurrentUser(fallbackName);
                     setProfile(null);
                 }
 
-            } catch (error) {
+            } catch (error: any) {
                 console.error("Terjadi kesalahan saat mengelola profil:", error);
-                alert("Gagal memuat atau membuat profil Anda. Anda tetap login, namun beberapa fitur mungkin tidak bekerja dengan benar.");
-                
-                // Fallback to session data for display name, but keep user logged in.
+                alert(`Gagal memuat atau membuat profil Anda: ${error.message}`);
                 const fallbackName = session.user.user_metadata?.full_name || session.user.email || 'User';
                 setCurrentUser(fallbackName);
                 setProfile(null);
             }
         } else {
-            // No session, user is a guest.
             setProfile(null);
             setCurrentUser(GUEST_USER);
         }
@@ -223,31 +229,62 @@ export default function App() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const { data: guidesData, error: guidesError } = await supabase.from('guides').select('*').order('created_at', { ascending: false });
-        if (guidesError) throw guidesError;
-        setGuides(guidesData.map((g: any) => ({ 
-            ...g,
-            cities: g.cities || [],
-            user: g.is_user_contribution,
-            author: g.is_user_contribution ? g.author : ADMIN_USER
-        })));
+        const [guidesRes, threadsRes, postsRes, usersRes] = await Promise.all([
+            supabase.from('guides').select('*').order('created_at', { ascending: false }),
+            supabase.from('threads').select('*').order('created_at', { ascending: false }),
+            supabase.from('posts').select('*').order('created_at', { ascending: true }),
+            supabase.from('profiles').select('*')
+        ]);
 
-        const { data: threadsData, error: threadsError } = await supabase.from('threads').select('*, posts(*, author:author)').order('created_at', { ascending: false });
-        if (threadsError) throw threadsError;
+        if (guidesRes.error) throw guidesRes.error;
+        if (threadsRes.error) throw threadsRes.error;
+        if (postsRes.error) throw postsRes.error;
+        if (usersRes.error) throw usersRes.error;
+
+        const profilesData = usersRes.data as Profile[];
+        const profilesMap = new Map(profilesData.map(p => [p.id, p]));
+
+        const guidesData = guidesRes.data.map((g: any) => {
+            const profile = g.profile_id ? profilesMap.get(g.profile_id) : null;
+            return {
+                ...g,
+                cities: g.cities || [],
+                user: g.is_user_contribution,
+                author: g.is_user_contribution ? (profile?.display_name || g.author) : ADMIN_USER,
+                profile: profile
+            };
+        });
+        setGuides(guidesData);
+
+        const postsData = postsRes.data.map((p: any) => {
+            const profile = p.profile_id ? profilesMap.get(p.profile_id) : null;
+            return {
+                ...p,
+                text: p.content,
+                reports: p.reports || [],
+                author: profile || { id: null, display_name: p.author || 'Anonim', is_blocked: false }
+            };
+        });
         
-        setThreads(threadsData.map((t: any) => ({
-            ...t,
-            category: t.category || 'Umum',
-            greenVotes: t.green_votes || [],
-            yellowVotes: t.yellow_votes || [],
-            redVotes: t.red_votes || [],
-            reports: t.reports || [],
-            posts: (t.posts || []).map((p: any) => ({...p, text: p.content, reports: p.reports || []})).sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-        })));
+        const threadsData = threadsRes.data.map((t: any) => {
+            const threadPosts = postsData.filter(p => p.thread_id === t.id);
+            return {
+                ...t,
+                category: t.category || 'Umum',
+                greenVotes: t.green_votes || [],
+                yellowVotes: t.yellow_votes || [],
+                redVotes: t.red_votes || [],
+                reports: t.reports || [],
+                posts: threadPosts,
+            };
+        });
+        setThreads(threadsData);
+
+        setUsers(profilesData);
         
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error fetching data:", error);
-        alert('Gagal memuat data dari server.');
+        alert(`Gagal memuat data dari server: ${error.message}`);
       } finally {
         setLoading(false);
       }
@@ -322,6 +359,9 @@ export default function App() {
   };
 
   const handleOpenContributionModal = (guideToEdit: Guide | null = null) => {
+      if (!session && !isAdminMode) { setIsAuthModalOpen(true); return; }
+      if (isUserBlocked()) return;
+
       if (guideToEdit) {
           setEditingGuide(guideToEdit);
           setContribution({
@@ -358,21 +398,28 @@ export default function App() {
 
   const handleSubmitContribution = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (isUserBlocked()) return;
 
     if (!contribution.title.trim() || !contribution.stepsText.trim() || !contribution.author.trim() || (contribution.cities || []).length === 0) {
         alert('Mohon isi semua kolom yang wajib diisi (Judul, Nama, Kota, dan Langkah-langkah).');
         return;
     }
 
-    const guideData = {
+    const guideData: any = {
         title: contribution.title || "Panduan dari Netizen",
-        author: contribution.author.trim() || "Anonim",
         cities: contribution.cities,
         category: contribution.category || "Transport",
         cost: contribution.cost || "—",
         steps: contribution.stepsText ? contribution.stepsText.split("\n").map((s) => s.trim()).filter(Boolean) : [],
         tips: contribution.tipsText ? contribution.tipsText.split("\n").map((s) => s.trim()).filter(Boolean) : [],
     };
+    
+    if (session) {
+        guideData.profile_id = session.user.id;
+        guideData.author = profile?.display_name || currentUser;
+    } else {
+        guideData.author = contribution.author.trim() || "Anonim";
+    }
 
     if (editingGuide) {
         const originalGuides = guides;
@@ -392,7 +439,7 @@ export default function App() {
             alert("Panduan berhasil diperbarui!");
         }
     } else {
-        const isAdmin = currentUser === ADMIN_USER;
+        const isAdmin = isAdminMode;
         const newGuidePayload = {
             ...guideData,
             difficulty: "Pemula",
@@ -404,10 +451,15 @@ export default function App() {
         const { data, error } = await supabase.from('guides').insert(newGuidePayload).select().single();
         if (error) {
             console.error("Error inserting guide", error);
-            // Don't close the modal on error, and show a more detailed message
-            alert(`Gagal menambahkan panduan baru:\n\n${error.message}\n\nSilakan periksa kembali isian Anda.`);
+            alert(`Gagal menambahkan panduan baru:\n\n${error.message}`);
         } else {
-            const newGuide = { ...data, user: data.is_user_contribution, author: data.is_user_contribution ? data.author : ADMIN_USER };
+            const newProfile = data.profile_id ? users.find(u => u.id === data.profile_id) : null;
+            const newGuide = { 
+                ...data, 
+                user: data.is_user_contribution, 
+                author: data.is_user_contribution ? (newProfile?.display_name || data.author) : ADMIN_USER,
+                profile: newProfile
+            };
             setGuides([newGuide, ...guides]);
             if (isAdmin) {
                 setActiveTab("Explorer");
@@ -445,12 +497,15 @@ export default function App() {
 
   const handleCreateThread = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (isUserBlocked()) return;
+
     if (!threadForm.title.trim() || !threadForm.text.trim()) {
         alert('Judul diskusi dan pesan pertama tidak boleh kosong.');
         return;
     }
-    if (!session && !isAdminMode) {
+    if (!session) {
         alert('Anda harus login untuk membuat diskusi.');
+        setIsAuthModalOpen(true);
         return;
     }
 
@@ -463,20 +518,25 @@ export default function App() {
 
     const { data: postData, error: postError } = await supabase.from('posts').insert({
         thread_id: threadData.id, 
-        author: currentUser, 
-        content: threadForm.text
+        profile_id: session.user.id,
+        content: threadForm.text,
+        author: profile?.display_name, // For fallback display
     }).select().single();
 
     if (postError) { alert(`Error: ${postError.message}`); return; }
 
+    const newPost: Post = { 
+        ...postData,
+        text: postData.content, 
+        reports: [], 
+        author: profile || { id: session.user.id, display_name: currentUser, is_blocked: false }
+    };
+    
     const newThread = { 
         ...threadData, 
         category: threadData.category,
-        greenVotes: [], 
-        yellowVotes: [], 
-        redVotes: [], 
-        reports: [], 
-        posts: [{...postData, text: postData.content, reports: []}] 
+        greenVotes: [], yellowVotes: [], redVotes: [], reports: [], 
+        posts: [newPost] 
     };
     setThreads([newThread, ...threads]);
     setThreadForm({ title: "", text: "", category: "Umum" });
@@ -514,31 +574,27 @@ export default function App() {
   const handleCloseThreadDetail = () => setSelectedThread(null);
   
   const handleAddPost = async (threadId: string, text: string) => {
-    if (!text.trim()) {
-        alert('Komentar tidak boleh kosong.');
-        return;
-    }
-    if (!session && !isAdminMode) {
-        alert('Anda harus login untuk berkomentar.');
-        return;
-    }
+    if (!text.trim()) { alert('Komentar tidak boleh kosong.'); return; }
+    if (isUserBlocked()) return;
+    if (!session || !profile) { alert('Anda harus login untuk berkomentar.'); return; }
     
     const { data, error } = await supabase.from('posts').insert({
-        thread_id: threadId, author: currentUser, content: text
+        thread_id: threadId, 
+        profile_id: session.user.id,
+        content: text,
+        author: profile.display_name, // For fallback display
     }).select().single();
 
     if(error) { alert(`Error: ${error.message}`); return; }
     
-    const newPost: Post = { ...data, text: data.content, reports: data.reports || [] };
+    const newPost: Post = { ...data, text: data.content, reports: data.reports || [], author: profile };
     setThreads(threads.map(t => t.id === threadId ? { ...t, posts: [...(t.posts || []), newPost] } : t));
     if(selectedThread?.id === threadId) setSelectedThread(t => t ? ({...t, posts: [...(t.posts || []), newPost]}): null);
   };
 
   const handleEditPost = async (threadId: string, postId: string, newText: string) => {
-    if (!newText.trim()) {
-        alert('Komentar tidak boleh kosong.');
-        return;
-    }
+    if (isUserBlocked()) return;
+    if (!newText.trim()) { alert('Komentar tidak boleh kosong.'); return; }
     
     const originalThreads = [...threads];
     const updatedThreads = threads.map(t => 
@@ -551,11 +607,7 @@ export default function App() {
         setSelectedThread(t => t ? ({...t, posts: (t.posts || []).map(p => p.id === postId ? { ...p, text: newText } : p) }) : null);
     }
 
-    const { error } = await supabase.rpc('handle_edit_post', {
-        post_id_in: postId,
-        new_content_in: newText
-    });
-
+    const { error } = await supabase.rpc('handle_edit_post', { post_id_in: postId, new_content_in: newText });
     if(error) { 
         alert(`Error: ${error.message}\nPerubahan gagal disimpan.`);
         setThreads(originalThreads); // Revert on failure
@@ -563,15 +615,13 @@ export default function App() {
   };
 
   const handleDeletePost = async (threadId: string, postId: string, skipConfirm = false) => {
+    if (isUserBlocked() && !isAdminMode) return;
     const thread = threads.find(t => t.id === threadId);
     if(thread && (thread.posts || []).length <= 1) { alert("Tidak bisa menghapus satu-satunya post."); return; }
     if (!skipConfirm && !window.confirm('Anda yakin ingin menghapus post ini?')) return;
      
     const { error } = await supabase.rpc('handle_delete_post', { post_id_in: postId });
-    if(error) { 
-        alert(`Error: ${error.message}`); 
-        return; 
-    }
+    if(error) { alert(`Error: ${error.message}`); return; }
 
     setThreads(threads.map(t => t.id === threadId ? { ...t, posts: (t.posts || []).filter(p => p.id !== postId) } : t));
     if(selectedThread?.id === threadId) setSelectedThread(t => t ? ({...t, posts: (t.posts || []).filter(p => p.id !== postId) }) : null);
@@ -579,6 +629,7 @@ export default function App() {
   };
 
   const handleVote = async (threadId: string, voteType: 'green' | 'yellow' | 'red') => {
+    if (session && isUserBlocked()) return;
     const thread = threads.find(t => t.id === threadId);
     if (!thread) return;
 
@@ -593,48 +644,29 @@ export default function App() {
     };
     
     const userVotedThisType = voteArrays[voteType].includes(currentVoterId);
-
     (['green', 'yellow', 'red'] as const).forEach(type => {
         const index = voteArrays[type].indexOf(currentVoterId);
-        if (index > -1) {
-            voteArrays[type].splice(index, 1);
-        }
+        if (index > -1) voteArrays[type].splice(index, 1);
     });
-
-    if (!userVotedThisType) {
-        voteArrays[voteType].push(currentVoterId);
-    }
+    if (!userVotedThisType) voteArrays[voteType].push(currentVoterId);
     
-    const updatedThread = { 
-        ...thread,
-        greenVotes: voteArrays.green,
-        yellowVotes: voteArrays.yellow,
-        redVotes: voteArrays.red,
-    };
-    
+    const updatedThread = { ...thread, greenVotes: voteArrays.green, yellowVotes: voteArrays.yellow, redVotes: voteArrays.red };
     setThreads(threads.map(t => t.id === threadId ? updatedThread : t));
-    if (selectedThread?.id === threadId) {
-        setSelectedThread(updatedThread);
-    }
+    if (selectedThread?.id === threadId) setSelectedThread(updatedThread);
 
-    // Persist change to database using an RPC function for security and reliability
     const { error } = await supabase.rpc('handle_thread_vote', {
-        thread_id_in: threadId,
-        vote_type_in: voteType,
-        voter_id_in: currentVoterId
+        thread_id_in: threadId, vote_type_in: voteType, voter_id_in: currentVoterId
     });
-
     if (error) {
         console.error("Error voting via RPC:", error);
         alert(`Gagal menyimpan suara Anda. Perubahan akan dibatalkan.`);
         setThreads(originalThreads);
-        if (originalSelectedThread && originalSelectedThread.id === threadId) {
-            setSelectedThread(originalSelectedThread);
-        }
+        if (originalSelectedThread && originalSelectedThread.id === threadId) setSelectedThread(originalSelectedThread);
     }
   };
   
   const handleOpenReportModal = (type: 'thread' | 'post', threadId: string, postId?: string) => {
+    if (session && isUserBlocked()) return;
     setReportTarget({ type, threadId, postId });
     setIsReportModalOpen(true);
   };
@@ -645,6 +677,7 @@ export default function App() {
   };
   
   const handleSubmitReport = async (reason: string) => {
+    if (session && isUserBlocked()) return;
     if (!reportTarget) return;
     const { type, threadId, postId } = reportTarget;
     const currentVoterId = session?.user?.id || voterId;
@@ -652,35 +685,28 @@ export default function App() {
     if (type === 'thread') {
         const thread = threads.find(t => t.id === threadId);
         if (!thread || (thread.reports || []).includes(currentVoterId)) return;
-
         const newReports = [...(thread.reports || []), currentVoterId];
         const { error } = await supabase.from('threads').update({ reports: newReports }).eq('id', threadId);
-
         if (error) { alert(`Error: ${error.message}`); }
         else {
             setThreads(threads.map(t => t.id === threadId ? { ...t, reports: newReports } : t));
             alert('Terima kasih atas laporan Anda. Admin akan meninjaunya.');
         }
-
     } else if (type === 'post' && postId) {
         const thread = threads.find(t => t.id === threadId);
         const post = thread?.posts.find(p => p.id === postId);
         if (!thread || !post || (post.reports || []).includes(currentVoterId)) return;
-
         const newReports = [...(post.reports || []), currentVoterId];
         
         if (newReports.length >= 10) {
-            await handleDeletePost(threadId, postId, true); // skip confirmation
+            await handleDeletePost(threadId, postId, true);
         } else {
             const { error } = await supabase.from('posts').update({ reports: newReports }).eq('id', postId);
             if (error) { alert(`Error: ${error.message}`); return; }
-
             const updatedPosts = (thread.posts || []).map(p => p.id === postId ? { ...p, reports: newReports } : p);
             const updatedThreads = threads.map(t => t.id === threadId ? { ...t, posts: updatedPosts } : t);
             setThreads(updatedThreads);
-            if (selectedThread?.id === threadId) {
-                setSelectedThread(st => st ? { ...st, posts: updatedPosts } : null);
-            }
+            if (selectedThread?.id === threadId) setSelectedThread(st => st ? { ...st, posts: updatedPosts } : null);
             alert('Terima kasih atas laporan Anda.');
         }
     }
@@ -721,13 +747,30 @@ export default function App() {
             const newCities = currentCities.includes(cityToToggle)
                 ? currentCities.filter(c => c !== cityToToggle)
                 : [...currentCities, cityToToggle];
-
-            // Do not allow de-selecting the last city
-            if (newCities.length === 0) {
-                return prev;
-            }
+            if (newCities.length === 0) return prev;
             return { ...prev, cities: newCities };
         });
+    };
+
+    const handleBlockUser = async (userId: string, is_blocked: boolean) => {
+        if (!isAdminMode) return;
+        const action = is_blocked ? 'memblokir' : 'membuka blokir';
+        if (!window.confirm(`Anda yakin ingin ${action} pengguna ini?`)) return;
+
+        const { error } = await supabase.from('profiles').update({ is_blocked }).eq('id', userId);
+        if (error) { alert(`Gagal ${action} pengguna: ${error.message}`); return; }
+
+        setUsers(users.map(u => u.id === userId ? { ...u, is_blocked } : u));
+        setThreads(prevThreads => prevThreads.map(thread => ({
+            ...thread,
+            posts: thread.posts.map(post => {
+                if (post.author.id === userId) {
+                    return { ...post, author: { ...post.author, is_blocked } };
+                }
+                return post;
+            })
+        })));
+        alert(`Pengguna berhasil di-${action}.`);
     };
 
   const TABS = useMemo(() => {
@@ -740,7 +783,7 @@ export default function App() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-900 text-gray-200">
         <div className="text-center">
-            <h1 className="text-2xl font-bold">Memuat Jabodetabek Way...</h1>
+            <h1 className="text-2xl font-bold">Memuat JaboWay...</h1>
             <p className="text-gray-400">Menyambungkan ke server...</p>
         </div>
       </div>
@@ -759,12 +802,11 @@ export default function App() {
         onLogout={handleLogout}
       />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex-grow pt-24 pb-20 md:py-8">
-        {/* Render tab content based on activeTab */}
         {activeTab === 'Explorer' && <ExplorerTab guides={guidesToShow} totalGuidesCount={filteredGuides.length} onLoadMore={handleLoadMoreGuides} onOpenDetail={handleOpenDetail} cityFilter={cityFilter} setCityFilter={setCityFilter} categoryFilter={categoryFilter} setCategoryFilter={setCategoryFilter} searchQuery={searchQuery} setSearchQuery={setSearchQuery}/>}
         {activeTab === 'Panduan' && <ContributionTab guides={guides} currentUser={currentUser} adminUser={ADMIN_USER} onOpenContributionModal={() => handleOpenContributionModal()} onOpenDetail={handleOpenDetail} onEdit={handleOpenContributionModal} onDelete={handleDeleteGuide} session={session} isAdminMode={isAdminMode} />}
         {activeTab === 'Forum' && <ForumTab threads={filteredThreads} voterId={session?.user?.id || voterId} session={session} isAdminMode={isAdminMode} onOpenThreadModal={() => setIsThreadModalOpen(true)} onOpenThreadDetail={handleOpenThreadDetail} onVote={handleVote} onReport={handleReportThread} threadCategoryFilter={threadCategoryFilter} setThreadCategoryFilter={setThreadCategoryFilter} />}
         {activeTab === 'About' && <AboutTab />}
-        {activeTab === 'Admin' && isAdminMode && <AdminTab guides={guides} threads={threads} onApproveGuide={handleApproveGuide} onDeleteGuide={handleDeleteGuide} onDeleteThread={handleDeleteThread} onAdminLogout={handleAdminLogout}/>}
+        {activeTab === 'Admin' && isAdminMode && <AdminTab guides={guides} threads={threads} users={users} onApproveGuide={handleApproveGuide} onDeleteGuide={handleDeleteGuide} onDeleteThread={handleDeleteThread} onAdminLogout={handleAdminLogout} onBlockUser={handleBlockUser} />}
       </main>
       <Footer onOpenTerms={() => setIsTermsModalOpen(true)} onOpenPrivacy={() => setIsPrivacyModalOpen(true)} />
       {selectedGuide && <GuideDetailModal guide={selectedGuide} onClose={handleCloseDetail} currentUser={currentUser} adminUser={ADMIN_USER} onEdit={handleOpenContributionModal} onDelete={handleDeleteGuide}/>}
@@ -801,7 +843,7 @@ export default function App() {
                                     value={contribution.author} 
                                     onChange={(e) => setContribution({...contribution, author: e.target.value})} 
                                     placeholder="Nama Kontributor" 
-                                    disabled={!!session || currentUser === ADMIN_USER}
+                                    disabled={!!session || isAdminMode}
                                     className="w-full px-3 py-2 text-gray-100 bg-gray-700 border border-gray-600 rounded-md disabled:opacity-70 disabled:cursor-not-allowed placeholder:text-gray-400" 
                                 />
                                 <input 

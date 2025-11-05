@@ -22,31 +22,50 @@ const PrivacyModal: React.FC<ModalProps> = ({ onClose }) => {
                 </div>
 
                 <div className="px-6 py-4 flex-grow max-h-[70vh] overflow-y-auto text-gray-300 space-y-4 text-sm">
-                    <p>Privasi Anda penting bagi kami. Kebijakan Privasi ini menjelaskan bagaimana Jabodetabek Way mengumpulkan, menggunakan, dan melindungi informasi Anda.</p>
+                    <p>Privasi Anda penting bagi kami. Kebijakan Privasi ini menjelaskan bagaimana JaboWay mengumpulkan, menggunakan, dan melindungi informasi Anda saat Anda menggunakan platform kami.</p>
                     
                     <h3 className="text-lg font-semibold text-gray-100 pt-2">1. Informasi yang Kami Kumpulkan</h3>
-                    <ul className="list-disc list-outside ml-6 space-y-1">
-                        <li><strong>Informasi yang Anda Berikan:</strong> Saat Anda berkontribusi membuat panduan atau berpartisipasi dalam forum, kami mengumpulkan konten yang Anda kirimkan, seperti teks, judul, dan nama kontributor yang Anda masukkan.</li>
-                        <li><strong>Informasi Anonim:</strong> Kami tidak memerlukan pendaftaran akun. Identitas Anda di forum (voting, reporting) adalah "Guest" atau nama yang Anda masukkan, yang tidak terhubung dengan informasi pribadi Anda. Kami tidak melacak alamat IP atau data pribadi lainnya.</li>
-                        <li><strong>Data Penggunaan:</strong> Kami dapat mengumpulkan informasi non-pribadi tentang bagaimana Anda berinteraksi dengan layanan kami, seperti panduan mana yang dilihat, untuk meningkatkan platform.</li>
+                    <p>Kami mengumpulkan berbagai jenis informasi tergantung pada bagaimana Anda berinteraksi dengan layanan kami:</p>
+                    <ul className="list-disc list-outside ml-6 space-y-2">
+                        <li>
+                            <strong>Informasi Akun:</strong> Saat Anda mendaftar melalui email atau Google, kami mengumpulkan informasi yang diperlukan untuk membuat akun Anda, seperti:
+                            <ul className="list-circle list-outside ml-6 mt-1">
+                                <li>Nama lengkap atau nama tampilan (display name).</li>
+                                <li>Alamat email.</li>
+                                <li>ID pengguna unik yang dibuat oleh sistem kami.</li>
+                                <li>Password Anda disimpan dalam bentuk hash dan tidak dapat kami lihat.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Konten Buatan Pengguna:</strong> Kami mengumpulkan konten yang Anda kirimkan, seperti panduan atau postingan forum. Konten ini akan dikaitkan dengan akun Anda dan ditampilkan secara publik dengan nama tampilan Anda.</li>
+                        <li><strong>Informasi Interaksi Tamu (Guest):</strong> Jika Anda tidak login, beberapa interaksi seperti voting atau pelaporan akan dikaitkan dengan ID anonim yang disimpan di perangkat Anda (local storage) untuk mencegah duplikasi. Kami tidak mengumpulkan informasi pribadi dari tamu.</li>
+                        <li><strong>Data Penggunaan:</strong> Kami dapat mengumpulkan informasi non-pribadi tentang bagaimana Anda berinteraksi dengan layanan kami (misalnya, panduan yang paling banyak dilihat) untuk tujuan analisis dan peningkatan platform.</li>
                     </ul>
 
                     <h3 className="text-lg font-semibold text-gray-100 pt-2">2. Penggunaan Informasi</h3>
                     <p>Informasi yang kami kumpulkan digunakan untuk:</p>
                     <ul className="list-disc list-outside ml-6 space-y-1">
                         <li>Menyediakan, mengoperasikan, dan memelihara layanan kami.</li>
-                        <li>Menampilkan konten kontribusi Anda kepada pengguna lain.</li>
-                        <li>Memahami dan menganalisis bagaimana Anda menggunakan layanan kami untuk perbaikan.</li>
+                        <li>Mengautentikasi pengguna dan mengelola akun.</li>
+                        <li>Menampilkan konten kontribusi Anda dan mengaitkannya dengan profil publik Anda (nama tampilan).</li>
+                        <li>Mengirimkan komunikasi terkait akun, seperti verifikasi email atau reset password.</li>
+                        <li>Memahami dan menganalisis penggunaan layanan untuk perbaikan.</li>
                         <li>Melakukan moderasi konten dan menegakkan Syarat & Ketentuan kami.</li>
                     </ul>
 
                     <h3 className="text-lg font-semibold text-gray-100 pt-2">3. Pembagian Informasi</h3>
-                    <p>Kami tidak menjual atau menyewakan informasi pribadi Anda. Data Anda disimpan di backend kami yang didukung oleh Supabase. Kami tidak membagikan data kontribusi Anda dengan pihak ketiga lainnya di luar fungsi inti platform.</p>
+                    <p>Kami sangat menjaga privasi Anda. Alamat email Anda tidak akan pernah ditampilkan secara publik atau dibagikan kepada pihak ketiga untuk tujuan pemasaran.</p>
+                     <ul className="list-disc list-outside ml-6 space-y-1">
+                        <li>Kami menggunakan Supabase sebagai penyedia layanan backend dan otentikasi. Saat Anda mendaftar, informasi Anda dikelola sesuai dengan kebijakan privasi mereka.</li>
+                        <li>Nama tampilan (display name) dan konten yang Anda buat bersifat publik dan dapat dilihat oleh pengguna lain.</li>
+                    </ul>
 
                     <h3 className="text-lg font-semibold text-gray-100 pt-2">4. Keamanan Data</h3>
-                    <p>Kami mengambil langkah-langkah yang wajar untuk melindungi informasi yang Anda kirimkan. Namun, tidak ada sistem yang 100% aman, dan kami tidak dapat menjamin keamanan mutlak data Anda.</p>
+                    <p>Kami mengambil langkah-langkah yang wajar untuk melindungi informasi Anda. Ini termasuk penggunaan hashing untuk password dan praktik keamanan standar lainnya. Namun, tidak ada sistem yang 100% aman, dan kami tidak dapat menjamin keamanan mutlak data Anda.</p>
+                    
+                    <h3 className="text-lg font-semibold text-gray-100 pt-2">5. Hak Anda</h3>
+                    <p>Anda memiliki kendali atas informasi pribadi Anda. Anda dapat memperbarui nama tampilan Anda dan mengelola konten yang telah Anda buat. Jika Anda ingin menghapus akun Anda, silakan hubungi kami.</p>
 
-                    <h3 className="text-lg font-semibold text-gray-100 pt-2">5. Perubahan Kebijakan</h3>
+                    <h3 className="text-lg font-semibold text-gray-100 pt-2">6. Perubahan Kebijakan</h3>
                     <p>Kami dapat memperbarui Kebijakan Privasi ini dari waktu ke waktu. Kami akan memberitahu Anda tentang perubahan apa pun dengan memposting kebijakan baru di halaman ini. Anda disarankan untuk meninjau Kebijakan Privasi ini secara berkala.</p>
 
                 </div>

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import type { Thread, Post, ThreadStatus } from '../types';
 import { PencilIcon, TrashIcon, EyeIcon } from './icons';
@@ -148,10 +149,10 @@ const ForumThreadModal: React.FC<ForumThreadModalProps> = ({ thread, onClose, on
                     <div className="space-y-4">
                         {(thread.posts || []).map((post, index) => {
                             const isOriginalPost = index === 0;
-                            const isCurrentUserPost = post.author === currentUser;
-                            const canModify = isCurrentUserPost || currentUser === adminUser;
+                            const isCurrentUserPost = session?.user?.id === post.author.id;
+                            const canModify = isCurrentUserPost || isAdminMode;
                             const hasReportedPost = (post.reports || []).includes(voterId);
-                            const canReportPost = !isCurrentUserPost && !hasReportedPost;
+                            const canReportPost = canPost && post.author.id && !isCurrentUserPost && !hasReportedPost;
 
 
                             return (
@@ -183,9 +184,10 @@ const ForumThreadModal: React.FC<ForumThreadModalProps> = ({ thread, onClose, on
                                             <div className="flex justify-between items-start">
                                                 <p className="text-gray-300 whitespace-pre-wrap flex-grow">
                                                     <strong className="text-gray-100 block">
-                                                        {post.author}
-                                                        {isCurrentUserPost && canPost && <span className="text-xs font-normal text-blue-400 ml-2">(Anda)</span>}
+                                                        {post.author.display_name}
+                                                        {isCurrentUserPost && <span className="text-xs font-normal text-blue-400 ml-2">(Anda)</span>}
                                                         {isOriginalPost && <span className="text-xs font-normal text-amber-400 ml-2">(Pembuat Thread)</span>}
+                                                        {post.author.is_blocked && <span className="text-xs font-normal text-red-400 ml-2">(Diblokir)</span>}
                                                     </strong>
                                                     {post.text}
                                                 </p>
@@ -203,10 +205,7 @@ const ForumThreadModal: React.FC<ForumThreadModalProps> = ({ thread, onClose, on
                                                     {canReportPost && (
                                                          <button
                                                             onClick={() => onReportPost(thread.id, post.id)}
-                                                            disabled={!canReportPost}
-                                                            className={`transition-opacity text-xl ${
-                                                                !canReportPost ? 'opacity-20 cursor-not-allowed' : 'opacity-60 hover:opacity-100'
-                                                            }`}
+                                                            className="transition-opacity text-xl opacity-60 hover:opacity-100"
                                                             title="Lapor Komentar"
                                                         >
                                                             🚩

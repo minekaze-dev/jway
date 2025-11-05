@@ -22,10 +22,18 @@ const TermsModal: React.FC<ModalProps> = ({ onClose }) => {
                 </div>
 
                 <div className="px-6 py-4 flex-grow max-h-[70vh] overflow-y-auto text-gray-300 space-y-4 text-sm">
-                    <p>Selamat datang di Jabodetabek Way! Dengan mengakses atau menggunakan platform kami, Anda setuju untuk terikat oleh Syarat dan Ketentuan ini. Harap baca dengan seksama.</p>
+                    <p>Selamat datang di JaboWay! Dengan mengakses, mendaftar, atau menggunakan platform kami, Anda setuju untuk terikat oleh Syarat dan Ketentuan ini. Harap baca dengan seksama.</p>
 
-                    <h3 className="text-lg font-semibold text-gray-100 pt-2">1. Perilaku Pengguna</h3>
-                    <p>Anda setuju untuk tidak menggunakan platform ini untuk tujuan yang melanggar hukum atau dilarang oleh ketentuan ini. Anda bertanggung jawab penuh atas semua konten yang Anda posting. Perilaku yang dilarang meliputi, namun tidak terbatas pada:</p>
+                    <h3 className="text-lg font-semibold text-gray-100 pt-2">1. Pendaftaran dan Keamanan Akun</h3>
+                    <ul className="list-disc list-outside ml-6 space-y-1">
+                        <li>Anda dapat mendaftar menggunakan email dan password, atau melalui penyedia pihak ketiga seperti Google.</li>
+                        <li>Anda bertanggung jawab untuk menjaga kerahasiaan informasi akun Anda, termasuk password.</li>
+                        <li>Anda setuju untuk segera memberitahu kami jika ada penggunaan akun Anda yang tidak sah.</li>
+                        <li>Semua aktivitas yang terjadi di bawah akun Anda adalah tanggung jawab Anda.</li>
+                    </ul>
+
+                    <h3 className="text-lg font-semibold text-gray-100 pt-2">2. Perilaku Pengguna</h3>
+                    <p>Anda setuju untuk tidak menggunakan platform ini untuk tujuan yang melanggar hukum atau dilarang oleh ketentuan ini. Anda bertanggung jawab penuh atas semua konten yang Anda posting di bawah akun Anda. Perilaku yang dilarang meliputi, namun tidak terbatas pada:</p>
                     <ul className="list-disc list-outside ml-6 space-y-1">
                         <li>Mengunggah atau membagikan konten yang bersifat ilegal, cabul, memfitnah, mengancam, melecehkan, atau mengandung unsur kebencian (SARA).</li>
                         <li>Menyebarkan informasi yang salah atau menyesatkan (hoax).</li>
@@ -34,16 +42,16 @@ const TermsModal: React.FC<ModalProps> = ({ onClose }) => {
                         <li>Meniru identitas orang atau entitas lain.</li>
                     </ul>
                     
-                    <h3 className="text-lg font-semibold text-gray-100 pt-2">2. Konten Buatan Pengguna</h3>
-                    <p>Anda mempertahankan kepemilikan atas konten yang Anda buat. Namun, dengan memposting konten di Jabodetabek Way, Anda memberikan kami lisensi non-eksklusif, bebas royalti, berlaku di seluruh dunia untuk menggunakan, mereproduksi, memodifikasi, dan menampilkan konten tersebut sehubungan dengan layanan kami.</p>
+                    <h3 className="text-lg font-semibold text-gray-100 pt-2">3. Konten Buatan Pengguna</h3>
+                    <p>Anda mempertahankan kepemilikan atas konten yang Anda buat. Namun, dengan memposting konten di JaboWay, Anda memberikan kami lisensi non-eksklusif, bebas royalti, berlaku di seluruh dunia untuk menggunakan, mereproduksi, memodifikasi, dan menampilkan konten tersebut sehubungan dengan layanan kami. Konten Anda akan dikaitkan dengan nama tampilan (display name) akun Anda.</p>
                     
-                    <h3 className="text-lg font-semibold text-gray-100 pt-2">3. Moderasi dan Pelaporan</h3>
+                    <h3 className="text-lg font-semibold text-gray-100 pt-2">4. Moderasi dan Pelaporan</h3>
                     <p>Kami berhak, tetapi tidak berkewajiban, untuk memantau, menyaring, atau menghapus konten yang kami anggap melanggar Syarat & Ketentuan ini atau merugikan komunitas. Kami mengandalkan laporan dari pengguna untuk membantu menjaga lingkungan yang aman dan positif. Konten yang menerima banyak laporan dapat dihapus secara otomatis atau ditinjau oleh admin.</p>
                     
-                    <h3 className="text-lg font-semibold text-gray-100 pt-2">4. Sangkalan (Disclaimer)</h3>
+                    <h3 className="text-lg font-semibold text-gray-100 pt-2">5. Sangkalan (Disclaimer)</h3>
                     <p>Konten di platform ini, terutama yang berasal dari kontribusi pengguna, disediakan "sebagaimana adanya". Kami tidak menjamin keakuratan, kelengkapan, atau kegunaan informasi apa pun. Anda setuju bahwa Anda harus mengevaluasi, dan menanggung semua risiko yang terkait dengan, penggunaan konten apa pun.</p>
 
-                    <h3 className="text-lg font-semibold text-gray-100 pt-2">5. Perubahan Ketentuan</h3>
+                    <h3 className="text-lg font-semibold text-gray-100 pt-2">6. Perubahan Ketentuan</h3>
                     <p>Kami dapat merevisi Syarat & Ketentuan ini dari waktu ke waktu. Versi terbaru akan selalu tersedia di platform kami. Dengan terus menggunakan layanan setelah perubahan tersebut berlaku, Anda setuju untuk terikat oleh syarat yang direvisi.</p>
                 </div>
                 <div className="px-6 py-4 bg-gray-900/50 border-t border-gray-700 flex justify-end">

@@ -66,11 +66,11 @@ const Header: React.FC<HeaderProps> = ({ activeTab, onTabChange, onOpenAdminLogi
                         >
                             <img
                                 src="https://i.imgur.com/2cQj0kc.jpg"
-                                alt="Jabodetabek Way Logo"
+                                alt="JaboWay Logo"
                                 className="w-10 h-10 rounded-full object-cover shadow-md"
                             />
                             <div>
-                                <h1 className="text-xl font-bold tracking-tight text-gray-100">JABODETABEK WAY</h1>
+                                <h1 className="text-xl font-bold tracking-tight text-gray-100">JABOWAY</h1>
                                 <p className="text-xs text-gray-400 hidden sm:block">Panduan Hidup Perantau di Kota Metropolitan</p>
                             </div>
                         </div>

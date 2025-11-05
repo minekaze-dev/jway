@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { Thread, ThreadStatus, ThreadCategory } from '../types';
 import { ChatAlt2Icon, PlusCircleIcon } from './icons';
@@ -140,7 +141,7 @@ const ForumTab: React.FC<ForumTabProps> = ({ threads, voterId, session, isAdminM
                                         <div className="mt-3 border-t border-gray-700 pt-3 space-y-3">
                                             {posts[0] && (
                                                 <p key={posts[0].id} className="text-sm text-gray-300 line-clamp-2">
-                                                    <strong className="text-gray-100">{posts[0].author}:</strong> "{posts[0].text}"
+                                                    <strong className="text-gray-100">{posts[0].author.display_name}:</strong> "{posts[0].text}"
                                                 </p>
                                             )}
                                             
@@ -153,7 +154,7 @@ const ForumTab: React.FC<ForumTabProps> = ({ threads, voterId, session, isAdminM
 
                                             {posts.length > 1 && (
                                                 <p key={posts[posts.length - 1].id} className="text-sm text-gray-400 line-clamp-2 bg-gray-700/50 p-2 rounded-md">
-                                                    <strong className="text-gray-200">{posts[posts.length - 1].author}:</strong> "{posts[posts.length - 1].text}"
+                                                    <strong className="text-gray-200">{posts[posts.length - 1].author.display_name}:</strong> "{posts[posts.length - 1].text}"
                                                 </p>
                                             )}
                                         </div>

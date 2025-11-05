@@ -19,13 +19,16 @@ export interface Guide {
   user?: boolean;
   views: number;
   status: GuideStatus;
+  profile_id?: string;
+  profile?: Profile;
 }
 
 export interface Post {
   id: string;
-  author: string;
+  author: { id: string | null; display_name: string; is_blocked?: boolean };
   text: string;
-  reports: string[]; // Array of usernames who reported
+  reports: string[];
+  profile_id?: string;
 }
 
 export interface Thread {
@@ -34,10 +37,10 @@ export interface Thread {
   category: ThreadCategory;
   posts: Post[];
   views: number;
-  greenVotes: string[]; // Array of usernames for 'Trusted'
-  yellowVotes: string[]; // Array of usernames for 'Questionable'
-  redVotes: string[]; // Array of usernames for 'Danger'
-  reports: string[]; // Array of usernames who reported
+  greenVotes: string[]; // Array of voter IDs for 'Trusted'
+  yellowVotes: string[]; // Array of voter IDs for 'Questionable'
+  redVotes: string[]; // Array of voter IDs for 'Danger'
+  reports: string[]; // Array of voter IDs who reported
 }
 
 export interface ContributionForm {
@@ -59,4 +62,5 @@ export interface ThreadForm {
 export interface Profile {
   id: string;
   display_name: string;
+  is_blocked?: boolean;
 }

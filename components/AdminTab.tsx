@@ -1,18 +1,20 @@
 
 import React, { useState } from 'react';
-import type { Guide, Thread } from '../types';
+import type { Guide, Thread, Profile } from '../types';
 import { TrashIcon, CheckCircleIcon, LogoutIcon } from './icons';
 
 interface AdminTabProps {
     guides: Guide[];
     threads: Thread[];
+    users: Profile[];
     onApproveGuide: (id: string) => void;
     onDeleteGuide: (id: string) => void;
     onDeleteThread: (id: string) => void;
     onAdminLogout: () => void;
+    onBlockUser: (userId: string, is_blocked: boolean) => void;
 }
 
-const AdminTab: React.FC<AdminTabProps> = ({ guides, threads, onApproveGuide, onDeleteGuide, onDeleteThread, onAdminLogout }) => {
+const AdminTab: React.FC<AdminTabProps> = ({ guides, threads, users, onApproveGuide, onDeleteGuide, onDeleteThread, onAdminLogout, onBlockUser }) => {
     const [activeSubTab, setActiveSubTab] = useState('review');
     
     const ADMIN_USER = 'Admin';
@@ -21,12 +23,12 @@ const AdminTab: React.FC<AdminTabProps> = ({ guides, threads, onApproveGuide, on
     const reportedThreads = threads.filter(t => (t.reports || []).length >= 10);
     
     const approvedGuides = guides.filter(g => g.status === 'approved');
-    const adminGuides = approvedGuides.filter(g => g.author === ADMIN_USER);
-    const userGuides = approvedGuides.filter(g => g.author !== ADMIN_USER);
+    const adminGuides = approvedGuides.filter(g => !g.user);
+    const userGuides = approvedGuides.filter(g => g.user);
 
     const allThreads = threads;
-    const adminThreads = allThreads.filter(t => (t.posts || [])[0]?.author === ADMIN_USER);
-    const userThreads = allThreads.filter(t => (t.posts || [])[0]?.author !== ADMIN_USER);
+    const adminThreads = allThreads.filter(t => (t.posts || [])[0]?.author.display_name === ADMIN_USER);
+    const userThreads = allThreads.filter(t => (t.posts || [])[0]?.author.display_name !== ADMIN_USER);
 
     return (
         <section>
@@ -70,6 +72,16 @@ const AdminTab: React.FC<AdminTabProps> = ({ guides, threads, onApproveGuide, on
                         } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
                     >
                         Manajemen Konten
+                    </button>
+                    <button
+                        onClick={() => setActiveSubTab('users')}
+                        className={`${
+                            activeSubTab === 'users'
+                                ? 'border-blue-500 text-blue-500'
+                                : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'
+                        } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                    >
+                        Manajemen User
                     </button>
                 </nav>
             </div>
@@ -172,13 +184,52 @@ const AdminTab: React.FC<AdminTabProps> = ({ guides, threads, onApproveGuide, on
                                     <div key={thread.id} className="bg-gray-900 p-3 rounded-md flex justify-between items-center gap-4">
                                         <div>
                                             <p className="font-semibold text-gray-200">{thread.title}</p>
-                                            <p className="text-xs text-gray-400">oleh: {(thread.posts || [])[0]?.author}</p>
+                                            <p className="text-xs text-gray-400">oleh: {(thread.posts || [])[0]?.author.display_name}</p>
                                         </div>
                                         <button onClick={() => onDeleteThread(thread.id)} className="p-2 bg-red-900/50 text-red-300 rounded-md hover:bg-red-800 flex-shrink-0" title="Hapus Diskusi"><TrashIcon className="h-5 w-5"/></button>
                                     </div>
                                 )) : <p className="text-gray-500 text-center py-4">Tidak ada diskusi dari netizen.</p>}
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {activeSubTab === 'users' && (
+                 <div>
+                    <h3 className="text-xl font-bold mb-4 text-gray-100">Manajemen Pengguna ({users.length})</h3>
+                    <div className="bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-700 max-h-[70vh] overflow-y-auto">
+                        <table className="w-full text-sm text-left text-gray-400">
+                            <thead className="text-xs text-gray-300 uppercase bg-gray-700">
+                                <tr>
+                                    <th scope="col" className="px-6 py-3">Nama</th>
+                                    <th scope="col" className="px-6 py-3">ID Pengguna</th>
+                                    <th scope="col" className="px-6 py-3">Status</th>
+                                    <th scope="col" className="px-6 py-3 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {users.map(user => (
+                                    <tr key={user.id} className="bg-gray-800 border-b border-gray-700 hover:bg-gray-600/50">
+                                        <td className="px-6 py-4 font-medium text-gray-100 whitespace-nowrap">{user.display_name}</td>
+                                        <td className="px-6 py-4 font-mono text-xs">{user.id}</td>
+                                        <td className="px-6 py-4">
+                                            {user.is_blocked ? 
+                                                <span className="bg-red-900 text-red-300 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full">Diblokir</span> :
+                                                <span className="bg-green-900 text-green-300 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full">Aktif</span>
+                                            }
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            {user.is_blocked ? (
+                                                <button onClick={() => onBlockUser(user.id, false)} className="font-medium text-green-400 hover:underline">Buka Blokir</button>
+                                            ) : (
+                                                <button onClick={() => onBlockUser(user.id, true)} className="font-medium text-red-400 hover:underline">Blokir</button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             )}
